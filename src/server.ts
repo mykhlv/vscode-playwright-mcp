@@ -4,7 +4,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SessionManager } from './session/session-manager.js';
-import { tools, toolMap } from './tools/index.js';
+import { tools } from './tools/index.js';
 import { ToolError } from './types/errors.js';
 import { logger } from './utils/logger.js';
 import type { ToolResult, ImageResult, TextResult } from './types/tool-results.js';
@@ -19,10 +19,12 @@ export function createServer(): McpServer {
 
   // Register each tool with the MCP server
   for (const tool of tools) {
-    server.tool(
+    server.registerTool(
       tool.name,
-      tool.description,
-      tool.inputSchema,
+      {
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+      },
       async (params: Record<string, unknown>) => {
         try {
           const result = await tool.handler(session, params);

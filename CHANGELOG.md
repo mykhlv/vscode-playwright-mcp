@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+- Migrated tool registration from deprecated `server.tool()` to `server.registerTool()` API
+- Replaced raw JSON Schema tool definitions with Zod schemas for type-safe parameter validation
+- Added `zod` as a direct dependency (required by MCP SDK)
+
 ### Added
 - MCP server with stdio transport and 7 core tools:
   `vscode_launch`, `vscode_close`, `vscode_screenshot`, `vscode_snapshot`,
