@@ -17,13 +17,16 @@ const mockExistsSync = vi.mocked(existsSync);
 
 describe('resolveVSCodePath', () => {
   const originalEnv = process.env['VSCODE_PLAYWRIGHT_VSCODE_PATH'];
+  const originalPlatform = process.platform;
 
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env['VSCODE_PLAYWRIGHT_VSCODE_PATH'];
+    Object.defineProperty(process, 'platform', { value: 'darwin', writable: true });
   });
 
   afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform, writable: true });
     if (originalEnv !== undefined) {
       process.env['VSCODE_PLAYWRIGHT_VSCODE_PATH'] = originalEnv;
     } else {

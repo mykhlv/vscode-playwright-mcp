@@ -30,6 +30,10 @@ const WELL_KNOWN_PATHS: Record<string, string[]> = {
     '/usr/share/code-insiders/code-insiders',
     '/usr/bin/code-insiders',
   ],
+  win32: [
+    `${process.env['LOCALAPPDATA'] ?? ''}\\Programs\\Microsoft VS Code\\Code.exe`,
+    `${process.env['LOCALAPPDATA'] ?? ''}\\Programs\\Microsoft VS Code Insiders\\Code - Insiders.exe`,
+  ],
 };
 
 /**

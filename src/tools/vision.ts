@@ -5,7 +5,7 @@
 import type { SessionManager } from '../session/session-manager.js';
 import type { ScreenshotParams, SnapshotParams } from '../types/tool-params.js';
 import { type ToolResult, textResult, imageResult } from '../types/tool-results.js';
-import { validateQuality, validateScale, validateRegion } from '../utils/validation.js';
+import { validateQuality, validateRegion } from '../utils/validation.js';
 import { captureScreenshot } from '../utils/image.js';
 import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
@@ -20,7 +20,6 @@ export async function handleScreenshot(
   const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
 
   validateQuality(params.quality);
-  validateScale(params.scale);
   validateRegion(params.region, viewport);
 
   const result = await withRetry(
@@ -28,7 +27,6 @@ export async function handleScreenshot(
       format: params.format,
       quality: params.quality,
       region: params.region,
-      scale: params.scale,
     }),
     'screenshot',
   );

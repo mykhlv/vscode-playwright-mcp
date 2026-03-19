@@ -27,7 +27,8 @@ export function createServer(): McpServer {
       },
       async (params: Record<string, unknown>) => {
         try {
-          const result = await tool.handler(session, params);
+          const parsed = tool.inputSchema.parse(params);
+          const result = await tool.handler(session, parsed);
           return toMcpResponse(result);
         } catch (error) {
           return toMcpError(error);

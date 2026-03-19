@@ -6,6 +6,7 @@ import type { SessionManager } from '../session/session-manager.js';
 import type { LaunchParams, CloseParams } from '../types/tool-params.js';
 import { type ToolResult, textResult } from '../types/tool-results.js';
 import { validatePathExists } from '../utils/validation.js';
+import { ErrorCode, ToolError } from '../types/errors.js';
 import { logger } from '../utils/logger.js';
 
 export async function handleLaunch(
@@ -27,7 +28,7 @@ export async function handleLaunch(
     for (const ext of params.extensions) {
       validatePathExists(ext, 'Extension path');
       if (!ext.endsWith('.vsix')) {
-        return textResult(`Error: Extension must be a .vsix file. Got: ${ext}. Only local .vsix files are supported for security.`);
+        throw new ToolError(ErrorCode.INVALID_INPUT, `Extension must be a .vsix file. Got: ${ext}. Only local .vsix files are supported for security.`);
       }
     }
   }

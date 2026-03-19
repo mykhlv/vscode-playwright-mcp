@@ -9,7 +9,6 @@ export interface CaptureOptions {
   format?: 'jpeg' | 'png';
   quality?: number;
   region?: { x: number; y: number; width: number; height: number };
-  scale?: number;
 }
 
 export interface CaptureResult {
@@ -30,12 +29,10 @@ export async function captureScreenshot(
 ): Promise<CaptureResult> {
   const format = options.format ?? 'jpeg';
   const quality = format === 'jpeg' ? (options.quality ?? 75) : undefined;
-  const scale = options.scale ?? 1;
 
   const screenshotOptions: Parameters<Page['screenshot']>[0] = {
     type: format,
     quality,
-    scale: scale === 1 ? undefined : 'css',
   };
 
   if (options.region) {
@@ -49,16 +46,15 @@ export async function captureScreenshot(
 
   const buffer = await page.screenshot(screenshotOptions);
 
-  // Calculate effective dimensions
   let width: number;
   let height: number;
   if (options.region) {
-    width = Math.round(options.region.width * scale);
-    height = Math.round(options.region.height * scale);
+    width = options.region.width;
+    height = options.region.height;
   } else {
     const viewport = page.viewportSize();
-    width = Math.round((viewport?.width ?? 1280) * scale);
-    height = Math.round((viewport?.height ?? 720) * scale);
+    width = viewport?.width ?? 1280;
+    height = viewport?.height ?? 720;
   }
 
   return {

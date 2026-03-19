@@ -25,7 +25,6 @@ export interface ScreenshotParams {
   };
   format?: 'jpeg' | 'png';
   quality?: number;
-  scale?: number;
 }
 
 export interface SnapshotParams {

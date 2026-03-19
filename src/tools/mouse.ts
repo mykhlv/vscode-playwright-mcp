@@ -25,22 +25,16 @@ export async function handleClick(
   const clickCount = params.click_count ?? 1;
   const modifiers = params.modifiers ?? [];
 
-  await withRetry(async () => {
-    // Press modifiers
-    for (const mod of modifiers) {
-      await page.keyboard.down(mod);
-    }
-
-    await page.mouse.click(params.x, params.y, {
-      button,
-      clickCount,
-    });
-
-    // Release modifiers in reverse order
+  for (const mod of modifiers) {
+    await page.keyboard.down(mod);
+  }
+  try {
+    await page.mouse.click(params.x, params.y, { button, clickCount });
+  } finally {
     for (const mod of [...modifiers].reverse()) {
       await page.keyboard.up(mod);
     }
-  }, 'click');
+  }
 
   const clickType = clickCount === 2 ? 'Double-clicked' : clickCount === 3 ? 'Triple-clicked' : 'Clicked';
   const buttonDesc = button !== 'left' ? ` (${button} button)` : '';
@@ -107,11 +101,8 @@ export async function handleScroll(
       break;
   }
 
-  await withRetry(async () => {
-    // Move to position first, then scroll
-    await page.mouse.move(params.x, params.y);
-    await page.mouse.wheel(deltaX, deltaY);
-  }, 'scroll');
+  await page.mouse.move(params.x, params.y);
+  await page.mouse.wheel(deltaX, deltaY);
 
   return textResult(
     `Scrolled ${params.direction} by ${amount} units at (${params.x}, ${params.y}). Take a screenshot to see the result.`,
@@ -130,13 +121,10 @@ export async function handleDrag(
   validateCoordinates(params.start_x, params.start_y, viewport);
   validateCoordinates(params.end_x, params.end_y, viewport);
 
-  await withRetry(async () => {
-    await page.mouse.move(params.start_x, params.start_y);
-    await page.mouse.down();
-    // Move in steps for smooth drag (important for VS Code drag targets)
-    await page.mouse.move(params.end_x, params.end_y, { steps: 10 });
-    await page.mouse.up();
-  }, 'drag');
+  await page.mouse.move(params.start_x, params.start_y);
+  await page.mouse.down();
+  await page.mouse.move(params.end_x, params.end_y, { steps: 10 });
+  await page.mouse.up();
 
   return textResult(
     `Dragged from (${params.start_x}, ${params.start_y}) to (${params.end_x}, ${params.end_y}). Take a screenshot to verify the result.`,

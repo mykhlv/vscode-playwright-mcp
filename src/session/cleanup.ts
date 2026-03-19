@@ -43,10 +43,16 @@ export async function cleanupTempDir(dirPath: string): Promise<void> {
 function killProcess(pid: number): void {
   if (pid <= 0) return;
   try {
-    process.kill(pid, 'SIGKILL');
+    process.kill(pid, 'SIGTERM');
+    setTimeout(() => {
+      try {
+        process.kill(pid, 'SIGKILL');
+      } catch {
+        // Process already exited
+      }
+    }, 2000);
     logger.info('process_killed', { pid });
   } catch (error) {
-    // ESRCH = process already dead — not an error
     if ((error as NodeJS.ErrnoException).code !== 'ESRCH') {
       logger.warn('process_kill_failed', { pid, error: String(error) });
     }

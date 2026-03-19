@@ -66,9 +66,11 @@ export class SessionManager {
 
     this.stateMachine.transition(SessionState.LAUNCHING);
 
+    let launchPromise: Promise<import('./vscode-launcher.js').LaunchResult> | null = null;
     try {
+      launchPromise = launchVSCode(config);
       const result = await withTimeout(
-        launchVSCode(config),
+        launchPromise,
         LAUNCH_TIMEOUT_MS,
         'VS Code launch',
       );
@@ -81,10 +83,10 @@ export class SessionManager {
       // Track for cleanup hooks
       trackSession(this.pid, this.userDataDir);
 
-      // Register crash detection
-      this.app.on('close', () => {
-        if (this.stateMachine.state === SessionState.READY) {
-          logger.error('vscode_crashed', { pid: this.pid });
+      const currentApp = this.app;
+      currentApp.on('close', () => {
+        if (this.app === currentApp && this.stateMachine.state === SessionState.READY) {
+          logger.warn('vscode_crashed', { pid: this.pid });
           this.stateMachine.transition(SessionState.CRASHED);
           this.app = null;
           this.page = null;
@@ -94,11 +96,20 @@ export class SessionManager {
       this.stateMachine.transition(SessionState.READY);
       logger.info('session_ready', { pid: this.pid });
     } catch (error) {
-      // If launch fails, transition to error and clean up
+      // If launch timed out, the promise may still resolve with a running process
+      if (launchPromise) {
+        launchPromise.then(
+          (result) => {
+            try { result.app.close(); } catch { /* ignore */ }
+            cleanupTempDir(result.userDataDir);
+          },
+          () => { /* launch itself failed, nothing to clean */ },
+        );
+      }
+
       try {
         this.stateMachine.transition(SessionState.ERROR);
       } catch {
-        // May already be in an unexpected state
         this.stateMachine.reset();
       }
       await this.forceCleanup();
@@ -139,11 +150,11 @@ export class SessionManager {
       }
     } catch (error) {
       logger.warn('close_error', { error: String(error) });
+    } finally {
+      await this.cleanupResources();
+      this.stateMachine.reset();
+      logger.info('session_closed');
     }
-
-    await this.cleanupResources();
-    this.stateMachine.transition(SessionState.IDLE);
-    logger.info('session_closed');
   }
 
   /**

@@ -26,14 +26,11 @@ function emit(level: LogLevel, msg: string, data?: Record<string, unknown>): voi
   if (!shouldLog(level)) return;
 
   const entry: Record<string, unknown> = {
+    ...data,
     ts: Date.now(),
     level,
     msg,
   };
-
-  if (data) {
-    Object.assign(entry, data);
-  }
 
   process.stderr.write(JSON.stringify(entry) + '\n');
 }
