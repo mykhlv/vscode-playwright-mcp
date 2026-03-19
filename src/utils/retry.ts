@@ -34,10 +34,7 @@ function isTransientError(error: unknown): boolean {
     msg.includes('connection refused') ||
     msg.includes('connection reset') ||
     msg.includes('econnreset') ||
-    msg.includes('econnrefused') ||
-    msg.includes('target closed') ||
-    msg.includes('session closed') ||
-    msg.includes('cdp session')
+    msg.includes('econnrefused')
   );
 }
 

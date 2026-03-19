@@ -123,8 +123,11 @@ export async function handleDrag(
 
   await page.mouse.move(params.start_x, params.start_y);
   await page.mouse.down();
-  await page.mouse.move(params.end_x, params.end_y, { steps: 10 });
-  await page.mouse.up();
+  try {
+    await page.mouse.move(params.end_x, params.end_y, { steps: 10 });
+  } finally {
+    await page.mouse.up();
+  }
 
   return textResult(
     `Dragged from (${params.start_x}, ${params.start_y}) to (${params.end_x}, ${params.end_y}). Take a screenshot to verify the result.`,

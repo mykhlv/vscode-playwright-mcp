@@ -44,13 +44,14 @@ function killProcess(pid: number): void {
   if (pid <= 0) return;
   try {
     process.kill(pid, 'SIGTERM');
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       try {
         process.kill(pid, 'SIGKILL');
       } catch {
         // Process already exited
       }
     }, 2000);
+    timer.unref();
     logger.info('process_killed', { pid });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ESRCH') {

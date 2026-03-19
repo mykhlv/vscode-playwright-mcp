@@ -3,7 +3,6 @@ import {
   validateCoordinates,
   validateNonEmptyString,
   validateQuality,
-  validateScale,
   validateRegion,
   validateClickCount,
   validateScrollAmount,
@@ -78,23 +77,6 @@ describe('validateQuality', () => {
 
   it('rejects non-integer values', () => {
     expect(() => validateQuality(50.5)).toThrow(ToolError);
-  });
-});
-
-describe('validateScale', () => {
-  it('accepts valid scale values', () => {
-    expect(() => validateScale(0.5)).not.toThrow();
-    expect(() => validateScale(1)).not.toThrow();
-    expect(() => validateScale(2)).not.toThrow();
-  });
-
-  it('rejects zero and negative', () => {
-    expect(() => validateScale(0)).toThrow(ToolError);
-    expect(() => validateScale(-1)).toThrow(ToolError);
-  });
-
-  it('rejects values above 2', () => {
-    expect(() => validateScale(2.1)).toThrow(ToolError);
   });
 });
 

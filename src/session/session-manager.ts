@@ -64,7 +64,14 @@ export class SessionManager {
       }
     }
 
-    this.stateMachine.transition(SessionState.LAUNCHING);
+    try {
+      this.stateMachine.transition(SessionState.LAUNCHING);
+    } catch {
+      throw new ToolError(
+        ErrorCode.SESSION_EXISTS,
+        'A VS Code instance is already running. Call vscode_close first, then launch again.',
+      );
+    }
 
     let launchPromise: Promise<import('./vscode-launcher.js').LaunchResult> | null = null;
     try {

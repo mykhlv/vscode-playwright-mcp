@@ -55,15 +55,6 @@ export function validateQuality(quality: number | undefined): void {
   }
 }
 
-export function validateScale(scale: number | undefined): void {
-  if (scale !== undefined && (scale <= 0 || scale > 2)) {
-    throw new ToolError(
-      ErrorCode.INVALID_INPUT,
-      `Screenshot scale must be between 0 (exclusive) and 2 (inclusive). Got ${scale}.`,
-    );
-  }
-}
-
 export function validateRegion(
   region: { x: number; y: number; width: number; height: number } | undefined,
   viewport: { width: number; height: number } = DEFAULT_VIEWPORT,

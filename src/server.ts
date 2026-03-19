@@ -7,7 +7,7 @@ import { SessionManager } from './session/session-manager.js';
 import { tools } from './tools/index.js';
 import { ToolError } from './types/errors.js';
 import { logger } from './utils/logger.js';
-import type { ToolResult, ImageResult, TextResult } from './types/tool-results.js';
+import type { ToolResult } from './types/tool-results.js';
 
 export function createServer(): McpServer {
   const server = new McpServer({
@@ -27,8 +27,7 @@ export function createServer(): McpServer {
       },
       async (params: Record<string, unknown>) => {
         try {
-          const parsed = tool.inputSchema.parse(params);
-          const result = await tool.handler(session, parsed);
+          const result = await tool.handler(session, params);
           return toMcpResponse(result);
         } catch (error) {
           return toMcpError(error);
@@ -47,24 +46,26 @@ export function createServer(): McpServer {
  */
 function toMcpResponse(result: ToolResult) {
   if (result.type === 'text') {
-    const textResult = result as TextResult;
     return {
-      content: [{ type: 'text' as const, text: textResult.text }],
+      content: [{ type: 'text' as const, text: result.text }],
     };
   }
 
-  // Image result: return both text metadata and image content
-  const imgResult = result as ImageResult;
-  return {
-    content: [
-      { type: 'text' as const, text: imgResult.metadata },
-      {
-        type: 'image' as const,
-        data: imgResult.data,
-        mimeType: imgResult.mimeType,
-      },
-    ],
-  };
+  if (result.type === 'image') {
+    return {
+      content: [
+        { type: 'text' as const, text: result.metadata },
+        {
+          type: 'image' as const,
+          data: result.data,
+          mimeType: result.mimeType,
+        },
+      ],
+    };
+  }
+
+  const _exhaustive: never = result;
+  throw new Error(`Unknown result type: ${(_exhaustive as any).type}`);
 }
 
 /**
