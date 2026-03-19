@@ -124,6 +124,7 @@ export interface LaunchResult {
 export interface LaunchConfig {
   executablePath?: string;
   workspace?: string;
+  extensionDevelopmentPath?: string;
   extensions?: string[];
   settings?: Record<string, unknown>;
   args?: string[];
@@ -158,7 +159,12 @@ export async function launchVSCode(config: LaunchConfig): Promise<LaunchResult> 
     launchArgs.push('--no-sandbox', '--disable-dev-shm-usage');
   }
 
-  // Extension installation
+  // Extension under development (loads from source, no .vsix needed)
+  if (config.extensionDevelopmentPath) {
+    launchArgs.push(`--extensionDevelopmentPath=${config.extensionDevelopmentPath}`);
+  }
+
+  // Extension installation (.vsix files)
   if (config.extensions) {
     for (const ext of config.extensions) {
       launchArgs.push(`--install-extension=${ext}`);

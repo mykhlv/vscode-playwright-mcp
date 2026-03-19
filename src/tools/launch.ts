@@ -19,6 +19,10 @@ export async function handleLaunch(
     validatePathExists(params.workspace, 'Workspace path');
   }
 
+  if (params.extension_development_path) {
+    validatePathExists(params.extension_development_path, 'Extension development path');
+  }
+
   if (params.extensions) {
     for (const ext of params.extensions) {
       validatePathExists(ext, 'Extension path');
@@ -31,6 +35,7 @@ export async function handleLaunch(
   await session.launch({
     executablePath: params.executable_path,
     workspace: params.workspace,
+    extensionDevelopmentPath: params.extension_development_path,
     extensions: params.extensions,
     settings: params.settings,
     args: params.args,

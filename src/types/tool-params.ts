@@ -5,6 +5,7 @@
 
 export interface LaunchParams {
   workspace?: string;
+  extension_development_path?: string;
   extensions?: string[];
   settings?: Record<string, unknown>;
   executable_path?: string;

@@ -28,6 +28,7 @@ export const tools: ToolDefinition[] = [
     description:
       'Launch a new VS Code instance with an isolated environment. ' +
       'Creates a temporary user-data-dir for state isolation. ' +
+      'Use extension_development_path to load an extension from source for testing. ' +
       'After launch, use vscode_screenshot to see the current state or vscode_snapshot to explore UI elements.',
     inputSchema: {
       type: 'object',
@@ -35,6 +36,10 @@ export const tools: ToolDefinition[] = [
         workspace: {
           type: 'string',
           description: 'Absolute path to a folder or .code-workspace file to open.',
+        },
+        extension_development_path: {
+          type: 'string',
+          description: 'Absolute path to an extension directory to load in development mode (--extensionDevelopmentPath). The extension is loaded from source without packaging as .vsix.',
         },
         extensions: {
           type: 'array',
