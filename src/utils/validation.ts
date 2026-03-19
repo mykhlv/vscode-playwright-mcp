@@ -94,3 +94,12 @@ export function validateClickCount(count: number | undefined): void {
     );
   }
 }
+
+export function validateScrollAmount(amount: number | undefined): void {
+  if (amount !== undefined && (!Number.isFinite(amount) || amount <= 0 || amount > 100)) {
+    throw new ToolError(
+      ErrorCode.INVALID_INPUT,
+      `Scroll amount must be a positive number up to 100. Got ${amount}.`,
+    );
+  }
+}

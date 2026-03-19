@@ -7,11 +7,12 @@ import type { ToolResult } from '../types/tool-results.js';
 import type {
   LaunchParams, CloseParams, ScreenshotParams, SnapshotParams,
   ClickParams, TypeParams, PressKeyParams,
+  HoverParams, ScrollParams, DragParams,
 } from '../types/tool-params.js';
 import { handleLaunch, handleClose } from './launch.js';
 import { handleScreenshot, handleSnapshot } from './vision.js';
 import { handleType, handlePressKey } from './keyboard.js';
-import { handleClick } from './mouse.js';
+import { handleClick, handleHover, handleScroll, handleDrag } from './mouse.js';
 
 export interface ToolDefinition {
   name: string;
@@ -195,6 +196,66 @@ export const tools: ToolDefinition[] = [
       required: ['key'],
     },
     handler: (session, params) => handlePressKey(session, params as PressKeyParams),
+  },
+  {
+    name: 'vscode_hover',
+    description:
+      'Move the mouse to pixel coordinates without clicking. ' +
+      'Use this to trigger hover effects like tooltips, hover documentation, error details, and quick info popups. ' +
+      'Take a screenshot after hovering to see the tooltip content.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        x: { type: 'number', description: 'X coordinate (logical pixels).' },
+        y: { type: 'number', description: 'Y coordinate (logical pixels).' },
+      },
+      required: ['x', 'y'],
+    },
+    handler: (session, params) => handleHover(session, params as HoverParams),
+  },
+  {
+    name: 'vscode_scroll',
+    description:
+      'Scroll at a specific position in the VS Code window. ' +
+      'Position the mouse at (x, y) then scroll in the given direction. ' +
+      'Works in any scrollable panel: editor, file explorer, terminal, output, etc. ' +
+      'Amount is in scroll units (default: 3). Each unit is approximately 100 pixels.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        x: { type: 'number', description: 'X coordinate to scroll at (logical pixels).' },
+        y: { type: 'number', description: 'Y coordinate to scroll at (logical pixels).' },
+        direction: {
+          type: 'string',
+          enum: ['up', 'down', 'left', 'right'],
+          description: 'Scroll direction.',
+        },
+        amount: {
+          type: 'number',
+          description: 'Scroll units (each ~100px). Default: 3. Max: 100.',
+        },
+      },
+      required: ['x', 'y', 'direction'],
+    },
+    handler: (session, params) => handleScroll(session, params as ScrollParams),
+  },
+  {
+    name: 'vscode_drag',
+    description:
+      'Drag from one position to another (mouse down, move, mouse up). ' +
+      'Use for drag-and-drop operations: reordering tabs, moving files in explorer, resizing panels, selecting text regions. ' +
+      'The drag is performed in 10 incremental steps for smooth movement.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        start_x: { type: 'number', description: 'Start X coordinate (logical pixels).' },
+        start_y: { type: 'number', description: 'Start Y coordinate (logical pixels).' },
+        end_x: { type: 'number', description: 'End X coordinate (logical pixels).' },
+        end_y: { type: 'number', description: 'End Y coordinate (logical pixels).' },
+      },
+      required: ['start_x', 'start_y', 'end_x', 'end_y'],
+    },
+    handler: (session, params) => handleDrag(session, params as DragParams),
   },
 ];
 

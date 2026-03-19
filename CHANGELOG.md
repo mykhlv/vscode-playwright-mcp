@@ -16,3 +16,7 @@
 - Key combo normalization (Ctrl->Control, Cmd->Meta, etc.)
 - Internal retry for transient CDP transport errors
 - Unit tests for validation, key mapping, session state machine, config resolution
+- Three remaining tools: `vscode_hover`, `vscode_scroll`, `vscode_drag`
+- Key combo validation against known Playwright key names (rejects unrecognized keys, detects multiple non-modifier keys)
+- Scroll amount validation (positive, max 100)
+- Unit tests for key validation, scroll amount validation, `isKnownKey` helper

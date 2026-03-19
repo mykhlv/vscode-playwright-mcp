@@ -1,5 +1,5 @@
 /**
- * Input parameter interfaces for all Phase 1 tools.
+ * Input parameter interfaces for all tools.
  * These map 1:1 to the JSON schemas registered with the MCP server.
  */
 
@@ -47,4 +47,23 @@ export interface TypeParams {
 
 export interface PressKeyParams {
   key: string;
+}
+
+export interface HoverParams {
+  x: number;
+  y: number;
+}
+
+export interface ScrollParams {
+  x: number;
+  y: number;
+  direction: 'up' | 'down' | 'left' | 'right';
+  amount?: number;
+}
+
+export interface DragParams {
+  start_x: number;
+  start_y: number;
+  end_x: number;
+  end_y: number;
 }

@@ -6,6 +6,7 @@ import {
   validateScale,
   validateRegion,
   validateClickCount,
+  validateScrollAmount,
 } from '../../src/utils/validation.js';
 import { ToolError } from '../../src/types/errors.js';
 
@@ -132,5 +133,32 @@ describe('validateClickCount', () => {
     expect(() => validateClickCount(0)).toThrow(ToolError);
     expect(() => validateClickCount(4)).toThrow(ToolError);
     expect(() => validateClickCount(1.5)).toThrow(ToolError);
+  });
+});
+
+describe('validateScrollAmount', () => {
+  it('accepts undefined (use default)', () => {
+    expect(() => validateScrollAmount(undefined)).not.toThrow();
+  });
+
+  it('accepts valid amounts', () => {
+    expect(() => validateScrollAmount(1)).not.toThrow();
+    expect(() => validateScrollAmount(3)).not.toThrow();
+    expect(() => validateScrollAmount(50)).not.toThrow();
+    expect(() => validateScrollAmount(100)).not.toThrow();
+  });
+
+  it('rejects zero and negative amounts', () => {
+    expect(() => validateScrollAmount(0)).toThrow(ToolError);
+    expect(() => validateScrollAmount(-1)).toThrow(ToolError);
+  });
+
+  it('rejects amounts above 100', () => {
+    expect(() => validateScrollAmount(101)).toThrow(ToolError);
+  });
+
+  it('rejects non-finite amounts', () => {
+    expect(() => validateScrollAmount(NaN)).toThrow(ToolError);
+    expect(() => validateScrollAmount(Infinity)).toThrow(ToolError);
   });
 });
