@@ -254,6 +254,11 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         filename: z.string().optional().describe('Output filename for "save" action. Absolute path or relative to workspace.'),
         delay: z.number().optional().describe('Frame delay in ms for "save" action. Overrides auto-calculated timing. Range: 100-2000ms.'),
         progress_bar: z.boolean().optional().describe('Show a thin progress bar at the bottom of the GIF. Default: false.'),
+        capture_on: z.enum(['auto', 'manual']).optional().describe(
+          'Frame capture mode for "start" action. ' +
+          '"auto" (default): frames captured automatically after visual tool calls. ' +
+          '"manual": frames captured only when vscode_screenshot is called, giving full control over which moments appear in the GIF.',
+        ),
       }),
       handler: (_session, params) => handleGif(recorder, params as GifParams),
     },

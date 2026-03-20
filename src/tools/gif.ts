@@ -2,6 +2,8 @@
  * Tool handler for vscode_gif: start/stop/save GIF recording.
  */
 
+import { resolve, isAbsolute } from 'node:path';
+import { tmpdir } from 'node:os';
 import type { GifRecorder } from '../session/gif-recorder.js';
 import type { GifParams } from '../types/tool-params.js';
 import { type ToolResult, textResult } from '../types/tool-results.js';
@@ -13,9 +15,15 @@ export async function handleGif(
 ): Promise<ToolResult> {
   switch (params.action) {
     case 'start': {
-      recorder.startRecording();
+      const captureMode = params.capture_on ?? 'auto';
+      recorder.startRecording(captureMode);
+
+      const modeDescription = captureMode === 'manual'
+        ? 'Frames will be captured only when you call vscode_screenshot.'
+        : 'Frames will be captured automatically after each visual tool call.';
+
       return textResult(
-        'GIF recording started. Frames will be captured automatically after each tool call. ' +
+        `GIF recording started (capture_on: ${captureMode}). ${modeDescription} ` +
         'Use vscode_gif with action "stop" to stop recording, then "save" with a filename to export.',
       );
     }
@@ -33,6 +41,24 @@ export async function handleGif(
         throw new ToolError(
           ErrorCode.INVALID_INPUT,
           'The "save" action requires a "filename" parameter. Provide an absolute path or relative filename like "demo.gif".',
+        );
+      }
+
+      if (!params.filename.endsWith('.gif')) {
+        throw new ToolError(
+          ErrorCode.INVALID_INPUT,
+          'GIF filename must end with ".gif".',
+        );
+      }
+
+      // Prevent writing to arbitrary/sensitive paths
+      const resolved = isAbsolute(params.filename) ? params.filename : resolve(process.cwd(), params.filename);
+      const cwd = process.cwd();
+      const tmp = tmpdir();
+      if (!resolved.startsWith(cwd) && !resolved.startsWith(tmp)) {
+        throw new ToolError(
+          ErrorCode.INVALID_INPUT,
+          `GIF path must be under the working directory (${cwd}) or temp directory (${tmp}). Got: ${resolved}`,
         );
       }
 

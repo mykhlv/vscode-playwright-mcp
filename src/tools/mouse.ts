@@ -29,6 +29,14 @@ async function resolvePosition(
   page: Page,
   params: PositionParams,
 ): Promise<ResolvedPosition> {
+  // Check for partial parameter pairs before main logic
+  if ((params.line !== undefined) !== (params.column !== undefined)) {
+    throw new ToolError(ErrorCode.INVALID_INPUT, 'Both line and column must be provided together.');
+  }
+  if ((params.x !== undefined) !== (params.y !== undefined)) {
+    throw new ToolError(ErrorCode.INVALID_INPUT, 'Both x and y must be provided together.');
+  }
+
   const hasXY = params.x !== undefined && params.y !== undefined;
   const hasLineCol = params.line !== undefined && params.column !== undefined;
 
@@ -83,10 +91,13 @@ export async function handleClick(
     await page.keyboard.down(mod);
   }
   try {
-    await page.mouse.click(x, y, { button, clickCount });
+    await withRetry(
+      () => page.mouse.click(x, y, { button, clickCount }),
+      'click',
+    );
   } finally {
     for (const mod of [...modifiers].reverse()) {
-      await page.keyboard.up(mod);
+      try { await page.keyboard.up(mod); } catch { /* ignore to prevent masking original error */ }
     }
   }
 

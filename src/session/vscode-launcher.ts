@@ -175,8 +175,17 @@ export async function launchVSCode(config: LaunchConfig): Promise<LaunchResult> 
     }
   }
 
-  // User-provided additional args
+  // User-provided additional args (with blocklist for dangerous flags)
   if (config.args) {
+    const BLOCKED_ARGS = ['--remote-debugging-port', '--inspect', '--inspect-brk', '--inspect-port', '--js-flags'];
+    for (const arg of config.args) {
+      if (BLOCKED_ARGS.some(blocked => arg.startsWith(blocked))) {
+        throw new ToolError(
+          ErrorCode.INVALID_INPUT,
+          `Blocked dangerous launch argument: "${arg}". Flags like --inspect and --remote-debugging-port are not allowed.`,
+        );
+      }
+    }
     launchArgs.push(...config.args);
   }
 

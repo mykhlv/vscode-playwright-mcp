@@ -26,9 +26,10 @@ export async function handleRunCommand(
 
   const page = session.getPage();
 
-  // Open Command Palette
+  // Open Command Palette (Meta on macOS, Control on Linux/Windows)
+  const commandPaletteShortcut = process.platform === 'darwin' ? 'Meta+Shift+KeyP' : 'Control+Shift+KeyP';
   await withRetry(
-    () => page.keyboard.press('Meta+Shift+KeyP'),
+    () => page.keyboard.press(commandPaletteShortcut),
     'open_command_palette',
   );
 

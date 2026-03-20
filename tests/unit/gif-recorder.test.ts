@@ -124,6 +124,31 @@ describe('GifRecorder', () => {
     expect(recorder.frameCount).toBe(0);
   });
 
+  it('defaults to auto capture mode', () => {
+    recorder.startRecording();
+    expect(recorder.captureMode).toBe('auto');
+  });
+
+  it('accepts manual capture mode', () => {
+    recorder.startRecording('manual');
+    expect(recorder.captureMode).toBe('manual');
+    expect(recorder.isRecording).toBe(true);
+  });
+
+  it('accepts explicit auto capture mode', () => {
+    recorder.startRecording('auto');
+    expect(recorder.captureMode).toBe('auto');
+  });
+
+  it('resets capture mode on new recording', () => {
+    recorder.startRecording('manual');
+    expect(recorder.captureMode).toBe('manual');
+
+    // Starting a new recording without explicit mode should reset to auto
+    recorder.startRecording();
+    expect(recorder.captureMode).toBe('auto');
+  });
+
   it('stops recording when reaching max frame limit', async () => {
     const mockPage = {
       screenshot: async () => createPngBuffer(4, 4), // tiny PNG for speed

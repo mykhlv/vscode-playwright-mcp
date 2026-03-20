@@ -41,9 +41,9 @@ interface Frame {
 
 /**
  * Scale RGBA pixel data from source dimensions to target dimensions
- * using nearest-neighbor interpolation.
+ * using nearest-neighbor interpolation. Works for both upscaling and downscaling.
  */
-function scaleDown(
+function scaleRGBA(
   rgba: Uint8Array,
   srcWidth: number,
   srcHeight: number,
@@ -98,11 +98,14 @@ function drawProgressBar(
   }
 }
 
+export type CaptureMode = 'auto' | 'manual';
+
 export class GifRecorder {
   private frames: Frame[] = [];
   private recording = false;
   /** Set to true if frames were ever halved (safety fallback). */
   private halved = false;
+  private _captureMode: CaptureMode = 'auto';
 
   get isRecording(): boolean {
     return this.recording;
@@ -112,14 +115,20 @@ export class GifRecorder {
     return this.frames.length;
   }
 
+  /** How frames are captured: 'auto' after visual tool calls, 'manual' only on vscode_screenshot. */
+  get captureMode(): CaptureMode {
+    return this._captureMode;
+  }
+
   /**
    * Start recording. Clears any existing frames.
    */
-  startRecording(): void {
+  startRecording(captureMode: CaptureMode = 'auto'): void {
     this.frames = [];
     this.halved = false;
+    this._captureMode = captureMode;
     this.recording = true;
-    logger.info('gif_recording_started');
+    logger.info('gif_recording_started', { captureMode });
   }
 
   /**
@@ -188,27 +197,22 @@ export class GifRecorder {
       const frame = this.frames[i]!;
       const parsed = PNG.sync.read(frame.png);
 
-      // Only scale down when the source is larger than target dimensions.
-      // If the source is smaller, use its original dimensions to avoid
-      // blocky nearest-neighbor upscaling.
+      // Force ALL frames to GIF_WIDTH x GIF_HEIGHT to prevent corrupt GIFs
+      // from mixed dimensions. Nearest-neighbor is fine for GIF quality.
       let rgba: Uint8Array;
-      let frameWidth: number;
-      let frameHeight: number;
+      const frameWidth = GIF_WIDTH;
+      const frameHeight = GIF_HEIGHT;
 
-      if (parsed.width > GIF_WIDTH || parsed.height > GIF_HEIGHT) {
-        rgba = scaleDown(
+      if (parsed.width !== GIF_WIDTH || parsed.height !== GIF_HEIGHT) {
+        rgba = scaleRGBA(
           new Uint8Array(parsed.data.buffer, parsed.data.byteOffset, parsed.data.byteLength),
           parsed.width,
           parsed.height,
           GIF_WIDTH,
           GIF_HEIGHT,
         );
-        frameWidth = GIF_WIDTH;
-        frameHeight = GIF_HEIGHT;
       } else {
         rgba = new Uint8Array(parsed.data.buffer, parsed.data.byteOffset, parsed.data.byteLength);
-        frameWidth = parsed.width;
-        frameHeight = parsed.height;
       }
 
       // Use explicit delay or calculate from timestamps

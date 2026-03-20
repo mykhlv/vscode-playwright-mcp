@@ -11,11 +11,12 @@ import { logger } from './utils/logger.js';
 import type { ToolResult } from './types/tool-results.js';
 
 /** Tools that should NOT trigger auto-capture of GIF frames.
- * vscode_get_hover and vscode_get_state are read-only queries that don't change
- * the visual state — and by the time they complete, tooltips may have disappeared. */
+ * Read-only queries and keyboard input don't produce immediate visual changes —
+ * the result is visible after the next screenshot/click/hover. */
 const SKIP_GIF_CAPTURE = new Set([
   'vscode_gif', 'vscode_launch', 'vscode_close',
   'vscode_get_hover', 'vscode_get_state', 'vscode_snapshot',
+  'vscode_press_key', 'vscode_type',
 ]);
 
 export function createServer(): McpServer {
@@ -40,9 +41,24 @@ export function createServer(): McpServer {
         try {
           const result = await tool.handler(session, params);
 
-          // Auto-capture GIF frame after successful tool calls
-          if (recorder.isRecording && !SKIP_GIF_CAPTURE.has(tool.name) && session.isReady) {
-            await recorder.captureFrame(session.getPage());
+          // Auto-capture GIF frame after successful tool calls.
+          // Wrapped separately so a capture failure doesn't mask a successful tool result.
+          try {
+            if (recorder.isRecording && session.isReady) {
+              const shouldCapture =
+                recorder.captureMode === 'manual'
+                  ? tool.name === 'vscode_screenshot'
+                  : !SKIP_GIF_CAPTURE.has(tool.name);
+
+              if (shouldCapture) {
+                await recorder.captureFrame(session.getPage());
+              }
+            }
+          } catch (captureError) {
+            logger.warn('gif_capture_after_tool_failed', {
+              tool: tool.name,
+              error: captureError instanceof Error ? captureError.message : String(captureError),
+            });
           }
 
           return toMcpResponse(result);
