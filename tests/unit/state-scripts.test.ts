@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { GET_STATE_SCRIPT, GET_HOVER_SCRIPT, RESOLVE_EDITOR_POSITION_SCRIPT } from '../../src/tools/state.js';
+import { GET_STATE_SCRIPT, GET_HOVER_SCRIPT, resolveEditorPosition } from '../../src/tools/state.js';
 
 // We can't run page.evaluate() in unit tests, but we can verify
 // the scripts are valid JavaScript that can be parsed.
@@ -77,30 +77,27 @@ describe('GET_HOVER_SCRIPT', () => {
   });
 });
 
-describe('RESOLVE_EDITOR_POSITION_SCRIPT', () => {
-  it('is valid JavaScript that can be parsed', () => {
-    // Wrap in a function expression since it's an arrow function taking params
-    expect(() => new Function(`return (${RESOLVE_EDITOR_POSITION_SCRIPT})`)).not.toThrow();
+describe('resolveEditorPosition', () => {
+  it('is exported as a function', () => {
+    expect(typeof resolveEditorPosition).toBe('function');
   });
 
-  it('is an arrow function taking parameters', () => {
-    expect(RESOLVE_EDITOR_POSITION_SCRIPT.trim()).toMatch(/^\(\[targetLine, targetCol\]\) =>/);
+  it('throws on resolution failure with actionable message', async () => {
+    // Mock page that returns found: false
+    const mockPage = {
+      evaluate: async () => ({ x: 0, y: 0, found: false }),
+    };
+    await expect(resolveEditorPosition(mockPage as any, 99, 1)).rejects.toThrow(
+      /Could not resolve editor position/,
+    );
   });
 
-  it('queries expected DOM selectors for line resolution', () => {
-    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('.margin-view-overlays .line-numbers');
-    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('.view-lines .view-line');
-  });
-
-  it('returns found/not-found results', () => {
-    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('found: true');
-    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('found: false');
-  });
-
-  it('calculates character width from span', () => {
-    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('span span');
-    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('charWidth');
-    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('getBoundingClientRect');
+  it('returns coordinates on successful resolution', async () => {
+    const mockPage = {
+      evaluate: async () => ({ x: 150, y: 300, found: true }),
+    };
+    const result = await resolveEditorPosition(mockPage as any, 10, 5);
+    expect(result).toEqual({ x: 150, y: 300 });
   });
 });
 

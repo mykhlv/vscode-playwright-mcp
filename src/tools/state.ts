@@ -264,15 +264,14 @@ export async function handleGetHover(
 }
 
 /**
- * DOM scraping script that resolves editor line:column to pixel coordinates.
- * Takes targetLine and targetCol as arguments via page.evaluate().
+ * Resolve editor line:column to pixel coordinates via DOM scraping.
+ * Uses a function (not string) so Playwright can pass arguments.
  */
-export const RESOLVE_EDITOR_POSITION_SCRIPT = `([targetLine, targetCol]) => {
-  // Find the line number element matching the target line
+function resolveEditorPositionFn([targetLine, targetCol]: [number, number]): EditorPositionResult {
   const lineNumberEls = document.querySelectorAll('.margin-view-overlays .line-numbers');
 
   for (const el of lineNumberEls) {
-    const lineNum = parseInt(el.textContent.trim(), 10);
+    const lineNum = parseInt(el.textContent!.trim(), 10);
     if (lineNum !== targetLine) continue;
 
     const lineRect = el.getBoundingClientRect();
@@ -286,7 +285,7 @@ export const RESOLVE_EDITOR_POSITION_SCRIPT = `([targetLine, targetCol]) => {
       // Calculate character width from the first text span
       const firstSpan = viewLine.querySelector('span span');
       let charWidth = 7.2; // reasonable monospace fallback
-      if (firstSpan && firstSpan.textContent.length > 0) {
+      if (firstSpan && firstSpan.textContent && firstSpan.textContent.length > 0) {
         charWidth = firstSpan.getBoundingClientRect().width / firstSpan.textContent.length;
       }
 
@@ -297,7 +296,7 @@ export const RESOLVE_EDITOR_POSITION_SCRIPT = `([targetLine, targetCol]) => {
   }
 
   return { x: 0, y: 0, found: false };
-}`;
+}
 
 interface EditorPositionResult {
   x: number;
@@ -316,9 +315,9 @@ export async function resolveEditorPosition(
 ): Promise<{ x: number; y: number }> {
   const result = await withRetry(
     () => page.evaluate(
-      RESOLVE_EDITOR_POSITION_SCRIPT,
-      [line, column],
-    ) as Promise<EditorPositionResult>,
+      resolveEditorPositionFn,
+      [line, column] as [number, number],
+    ),
     'resolve_editor_position',
   );
 
