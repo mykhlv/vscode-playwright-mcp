@@ -40,9 +40,11 @@ export async function handleLaunch(
     extensions: params.extensions,
     settings: params.settings,
     args: params.args,
+    viewport: params.viewport,
   });
 
-  const parts = ['VS Code launched successfully (1280x720 viewport).'];
+  const viewport = params.viewport ?? { width: 1280, height: 720 };
+  const parts = [`VS Code launched successfully (${viewport.width}x${viewport.height} viewport).`];
   if (params.workspace) {
     parts.push(`Workspace: ${params.workspace}`);
   }

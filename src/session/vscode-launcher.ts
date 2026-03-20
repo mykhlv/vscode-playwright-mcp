@@ -135,6 +135,7 @@ export interface LaunchConfig {
   extensions?: string[];
   settings?: Record<string, unknown>;
   args?: string[];
+  viewport?: { width: number; height: number };
 }
 
 /**
@@ -206,7 +207,8 @@ export async function launchVSCode(config: LaunchConfig): Promise<LaunchResult> 
   await window.waitForLoadState('domcontentloaded');
 
   // Set explicit viewport — viewportSize() returns undefined for Electron without this
-  await window.setViewportSize({ width: 1280, height: 720 });
+  const viewport = config.viewport ?? { width: 1280, height: 720 };
+  await window.setViewportSize(viewport);
 
   // Get PID for cleanup tracking
   const pid = await getPid(app);

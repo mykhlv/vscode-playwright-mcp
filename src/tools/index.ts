@@ -55,6 +55,11 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
           .describe('Path to VS Code Electron binary. Auto-detected if omitted.'),
         args: z.array(z.string()).optional()
           .describe('Additional CLI arguments to pass to VS Code.'),
+        viewport: z.object({
+          width: z.number(),
+          height: z.number(),
+        }).optional()
+          .describe('Viewport size in logical pixels. Default: { width: 1280, height: 720 }.'),
       }),
       handler: (session, params) => handleLaunch(session, params as LaunchParams),
     },

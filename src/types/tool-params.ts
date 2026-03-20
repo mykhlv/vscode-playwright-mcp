@@ -10,6 +10,7 @@ export interface LaunchParams {
   settings?: Record<string, unknown>;
   executable_path?: string;
   args?: string[];
+  viewport?: { width: number; height: number };
 }
 
 export interface CloseParams {
