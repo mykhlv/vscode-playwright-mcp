@@ -2,8 +2,8 @@
  * Tool handler for vscode_gif: start/stop/save GIF recording.
  */
 
-import { resolve, isAbsolute } from 'node:path';
-import { tmpdir } from 'node:os';
+import { resolve, isAbsolute, dirname } from 'node:path';
+import { existsSync } from 'node:fs';
 import type { GifRecorder } from '../session/gif-recorder.js';
 import type { GifParams } from '../types/tool-params.js';
 import { type ToolResult, textResult } from '../types/tool-results.js';
@@ -51,14 +51,15 @@ export async function handleGif(
         );
       }
 
-      // Prevent writing to arbitrary/sensitive paths
+      // Resolve path: absolute paths used as-is, relative paths resolved from cwd
       const resolved = isAbsolute(params.filename) ? params.filename : resolve(process.cwd(), params.filename);
-      const cwd = process.cwd();
-      const tmp = tmpdir();
-      if (!resolved.startsWith(cwd) && !resolved.startsWith(tmp)) {
+
+      // Validate the parent directory exists so we get a clear error instead of ENOENT
+      const parentDir = dirname(resolved);
+      if (!existsSync(parentDir)) {
         throw new ToolError(
           ErrorCode.INVALID_INPUT,
-          `GIF path must be under the working directory (${cwd}) or temp directory (${tmp}). Got: ${resolved}`,
+          `Parent directory does not exist: ${parentDir}. Create it first or use a different path.`,
         );
       }
 

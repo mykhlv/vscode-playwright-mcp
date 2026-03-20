@@ -98,6 +98,9 @@ const BASE_SETTINGS: Record<string, unknown> = {
   'window.restoreWindows': 'none',
   'workbench.enableExperiments': false,
   'extensions.ignoreRecommendations': true,
+  'workbench.panel.defaultLocation': 'bottom',
+  'chat.commandCenter.enabled': false,
+  'github.copilot.chat.enabled': false,
 };
 
 /**

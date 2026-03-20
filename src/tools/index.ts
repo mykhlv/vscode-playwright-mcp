@@ -127,7 +127,9 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
       name: 'vscode_type',
       description:
         'Type text at the current cursor position. ' +
-        'Make sure the target input is focused first (click on it, or use keyboard shortcuts to open Command Palette, Quick Open, etc.).',
+        'Make sure the target input is focused first (click on it, or use keyboard shortcuts to open Command Palette, Quick Open, etc.). ' +
+        'NOTE: VS Code may not trigger IntelliSense for trigger characters (like $ or .) when text is typed as a batch. ' +
+        'If you need completions to appear, type the trigger character separately with a small delay: vscode_type("$", delay: 50).',
       inputSchema: z.object({
         text: z.string().describe('Text to type.'),
         delay: z.number().optional()
@@ -204,7 +206,11 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         command: z.string()
           .describe('VS Code command ID or name, e.g. "editor.action.goToDefinition" or "Toggle Sidebar".'),
         input: z.string().optional()
-          .describe('Optional text typed into the input box after the command is selected (e.g., a line number for "Go to Line"). This is keyboard input, not programmatic arguments.'),
+          .describe(
+            'Optional text typed into an input box AFTER the command is selected and executed. ' +
+            'Works for commands that open an input box (e.g., "Go to Line" expects a line number, "Quick Open" expects a filename). ' +
+            'Does NOT work for commands that accept programmatic arguments — this is keyboard input, not an API call.',
+          ),
       }),
       handler: (session, params) => handleRunCommand(session, params as RunCommandParams),
     },
