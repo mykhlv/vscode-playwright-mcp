@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { GET_STATE_SCRIPT, GET_HOVER_SCRIPT } from '../../src/tools/state.js';
+import { GET_STATE_SCRIPT, GET_HOVER_SCRIPT, RESOLVE_EDITOR_POSITION_SCRIPT } from '../../src/tools/state.js';
 
 // We can't run page.evaluate() in unit tests, but we can verify
 // the scripts are valid JavaScript that can be parsed.
@@ -28,6 +28,7 @@ describe('GET_STATE_SCRIPT', () => {
     expect(GET_STATE_SCRIPT).toContain('status.problems');
     expect(GET_STATE_SCRIPT).toContain('.view-lines .view-line');
     expect(GET_STATE_SCRIPT).toContain('.line-numbers');
+    expect(GET_STATE_SCRIPT).toContain('.markers-panel');
   });
 
   it('returns an object with expected shape', () => {
@@ -35,6 +36,7 @@ describe('GET_STATE_SCRIPT', () => {
     expect(GET_STATE_SCRIPT).toContain('result.activeFile');
     expect(GET_STATE_SCRIPT).toContain('result.cursorPosition');
     expect(GET_STATE_SCRIPT).toContain('result.diagnostics');
+    expect(GET_STATE_SCRIPT).toContain('result.diagnosticsList');
     expect(GET_STATE_SCRIPT).toContain('result.visibleLines');
     expect(GET_STATE_SCRIPT).toContain('result.selection');
   });
@@ -72,5 +74,52 @@ describe('GET_HOVER_SCRIPT', () => {
   it('checks visibility of hover widget', () => {
     expect(GET_HOVER_SCRIPT).toContain('display');
     expect(GET_HOVER_SCRIPT).toContain('visibility');
+  });
+});
+
+describe('RESOLVE_EDITOR_POSITION_SCRIPT', () => {
+  it('is valid JavaScript that can be parsed', () => {
+    // Wrap in a function expression since it's an arrow function taking params
+    expect(() => new Function(`return (${RESOLVE_EDITOR_POSITION_SCRIPT})`)).not.toThrow();
+  });
+
+  it('is an arrow function taking parameters', () => {
+    expect(RESOLVE_EDITOR_POSITION_SCRIPT.trim()).toMatch(/^\(\[targetLine, targetCol\]\) =>/);
+  });
+
+  it('queries expected DOM selectors for line resolution', () => {
+    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('.margin-view-overlays .line-numbers');
+    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('.view-lines .view-line');
+  });
+
+  it('returns found/not-found results', () => {
+    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('found: true');
+    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('found: false');
+  });
+
+  it('calculates character width from span', () => {
+    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('span span');
+    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('charWidth');
+    expect(RESOLVE_EDITOR_POSITION_SCRIPT).toContain('getBoundingClientRect');
+  });
+});
+
+describe('GET_STATE_SCRIPT diagnostics panel scraping', () => {
+  it('scrapes markers panel rows', () => {
+    expect(GET_STATE_SCRIPT).toContain('.markers-panel');
+    expect(GET_STATE_SCRIPT).toContain('.monaco-list-row');
+  });
+
+  it('detects severity from codicon classes', () => {
+    expect(GET_STATE_SCRIPT).toContain('codicon-error');
+    expect(GET_STATE_SCRIPT).toContain('codicon-warning');
+    expect(GET_STATE_SCRIPT).toContain('codicon-info');
+  });
+
+  it('extracts message, position, source, and code', () => {
+    expect(GET_STATE_SCRIPT).toContain('.marker-message');
+    expect(GET_STATE_SCRIPT).toContain('.marker-line');
+    expect(GET_STATE_SCRIPT).toContain('.marker-source');
+    expect(GET_STATE_SCRIPT).toContain('.marker-code');
   });
 });

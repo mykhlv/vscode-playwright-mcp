@@ -6,6 +6,9 @@
 - `vscode_run_command` tool: execute VS Code commands via Command Palette automation (Meta+Shift+P → type → Enter)
 - `vscode_get_state` tool: read editor state via DOM scraping (active file, cursor position, diagnostics, visible lines)
 - `vscode_get_hover` tool: read hover tooltip content as text from `.monaco-hover-content` DOM elements
+- `vscode_get_state` now scrapes the Problems panel (`.markers-panel`) for detailed diagnostics with severity, message, line, source, and code
+- `vscode_click` and `vscode_hover` now accept `line` and `column` parameters for editor positioning without coordinate guessing
+- `resolveEditorPosition()` helper converts editor line:column to pixel coordinates via DOM scraping
 - Unit tests for DOM scraping script structure and selectors
 
 ### Changed

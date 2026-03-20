@@ -5,9 +5,11 @@
 import type { SessionManager } from '../session/session-manager.js';
 import type { ClickParams, HoverParams, ScrollParams, DragParams } from '../types/tool-params.js';
 import { type ToolResult, textResult } from '../types/tool-results.js';
+import { ErrorCode, ToolError } from '../types/errors.js';
 import { validateCoordinates, validateClickCount, validateScrollAmount } from '../utils/validation.js';
 import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
+import { resolveEditorPosition } from './state.js';
 
 export async function handleClick(
   session: SessionManager,
@@ -18,7 +20,38 @@ export async function handleClick(
   const page = session.getPage();
   const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
 
-  validateCoordinates(params.x, params.y, viewport);
+  const hasXY = params.x !== undefined && params.y !== undefined;
+  const hasLineCol = params.line !== undefined && params.column !== undefined;
+
+  if (hasXY && hasLineCol) {
+    throw new ToolError(
+      ErrorCode.INVALID_INPUT,
+      'Provide either (x, y) OR (line, column), not both.',
+    );
+  }
+  if (!hasXY && !hasLineCol) {
+    throw new ToolError(
+      ErrorCode.INVALID_INPUT,
+      'Provide either (x, y) pixel coordinates or (line, column) editor position.',
+    );
+  }
+
+  let x: number;
+  let y: number;
+  let posDesc: string;
+
+  if (hasLineCol) {
+    const resolved = await resolveEditorPosition(page, params.line!, params.column!);
+    x = resolved.x;
+    y = resolved.y;
+    posDesc = `line ${params.line}, column ${params.column} → (${x}, ${y})`;
+  } else {
+    x = params.x!;
+    y = params.y!;
+    posDesc = `(${x}, ${y})`;
+  }
+
+  validateCoordinates(x, y, viewport);
   validateClickCount(params.click_count);
 
   const button = params.button ?? 'left';
@@ -29,7 +62,7 @@ export async function handleClick(
     await page.keyboard.down(mod);
   }
   try {
-    await page.mouse.click(params.x, params.y, { button, clickCount });
+    await page.mouse.click(x, y, { button, clickCount });
   } finally {
     for (const mod of [...modifiers].reverse()) {
       await page.keyboard.up(mod);
@@ -41,7 +74,7 @@ export async function handleClick(
   const modDesc = modifiers.length > 0 ? ` with ${modifiers.join('+')}` : '';
 
   return textResult(
-    `${clickType} at (${params.x}, ${params.y})${buttonDesc}${modDesc}. Take a screenshot or snapshot to verify the result.`,
+    `${clickType} at ${posDesc}${buttonDesc}${modDesc}. Take a screenshot or snapshot to verify the result.`,
   );
 }
 
@@ -54,15 +87,46 @@ export async function handleHover(
   const page = session.getPage();
   const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
 
-  validateCoordinates(params.x, params.y, viewport);
+  const hasXY = params.x !== undefined && params.y !== undefined;
+  const hasLineCol = params.line !== undefined && params.column !== undefined;
+
+  if (hasXY && hasLineCol) {
+    throw new ToolError(
+      ErrorCode.INVALID_INPUT,
+      'Provide either (x, y) OR (line, column), not both.',
+    );
+  }
+  if (!hasXY && !hasLineCol) {
+    throw new ToolError(
+      ErrorCode.INVALID_INPUT,
+      'Provide either (x, y) pixel coordinates or (line, column) editor position.',
+    );
+  }
+
+  let x: number;
+  let y: number;
+  let posDesc: string;
+
+  if (hasLineCol) {
+    const resolved = await resolveEditorPosition(page, params.line!, params.column!);
+    x = resolved.x;
+    y = resolved.y;
+    posDesc = `line ${params.line}, column ${params.column} → (${x}, ${y})`;
+  } else {
+    x = params.x!;
+    y = params.y!;
+    posDesc = `(${x}, ${y})`;
+  }
+
+  validateCoordinates(x, y, viewport);
 
   await withRetry(
-    () => page.mouse.move(params.x, params.y),
+    () => page.mouse.move(x, y),
     'hover',
   );
 
   return textResult(
-    `Hovered at (${params.x}, ${params.y}). Take a screenshot to see tooltips or hover effects.`,
+    `Hovered at ${posDesc}. Take a screenshot to see tooltips or hover effects.`,
   );
 }
 

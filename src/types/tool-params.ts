@@ -33,8 +33,10 @@ export interface SnapshotParams {
 }
 
 export interface ClickParams {
-  x: number;
-  y: number;
+  x?: number;
+  y?: number;
+  line?: number;
+  column?: number;
   button?: 'left' | 'right' | 'middle';
   click_count?: number;
   modifiers?: ('Control' | 'Shift' | 'Alt' | 'Meta')[];
@@ -50,8 +52,10 @@ export interface PressKeyParams {
 }
 
 export interface HoverParams {
-  x: number;
-  y: number;
+  x?: number;
+  y?: number;
+  line?: number;
+  column?: number;
 }
 
 export interface ScrollParams {

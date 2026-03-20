@@ -96,12 +96,16 @@ export const tools: ToolDefinition[] = [
   {
     name: 'vscode_click',
     description:
-      'Click at pixel coordinates in the VS Code window. ' +
+      'Click at pixel coordinates OR editor line:column in the VS Code window. ' +
+      'Provide either (x, y) for pixel coordinates or (line, column) for editor positions. ' +
       'Use vscode_screenshot first to identify the target coordinates visually. ' +
+      'For editor content, line:column avoids coordinate guessing — the line must be visible in the viewport. ' +
       'Supports left/right/middle click, double-click (click_count=2), and modifier keys.',
     inputSchema: z.object({
-      x: z.number().describe('X coordinate (logical pixels).'),
-      y: z.number().describe('Y coordinate (logical pixels).'),
+      x: z.number().optional().describe('X coordinate (logical pixels). Required if line/column not provided.'),
+      y: z.number().optional().describe('Y coordinate (logical pixels). Required if line/column not provided.'),
+      line: z.number().optional().describe('Editor line number (1-based). Must be visible in viewport. Use instead of x/y for editor content.'),
+      column: z.number().optional().describe('Editor column number (1-based). Used with line parameter.'),
       button: z.enum(['left', 'right', 'middle']).optional()
         .describe('Mouse button. Default: left.'),
       click_count: z.number().optional()
@@ -138,12 +142,16 @@ export const tools: ToolDefinition[] = [
   {
     name: 'vscode_hover',
     description:
-      'Move the mouse to pixel coordinates without clicking. ' +
+      'Move the mouse to pixel coordinates OR editor line:column without clicking. ' +
       'Use this to trigger hover effects like tooltips, hover documentation, error details, and quick info popups. ' +
+      'Provide either (x, y) for pixel coordinates or (line, column) for editor positions. ' +
+      'For editor content, line:column avoids coordinate guessing — the line must be visible in the viewport. ' +
       'Take a screenshot after hovering to see the tooltip content.',
     inputSchema: z.object({
-      x: z.number().describe('X coordinate (logical pixels).'),
-      y: z.number().describe('Y coordinate (logical pixels).'),
+      x: z.number().optional().describe('X coordinate (logical pixels). Required if line/column not provided.'),
+      y: z.number().optional().describe('Y coordinate (logical pixels). Required if line/column not provided.'),
+      line: z.number().optional().describe('Editor line number (1-based). Must be visible in viewport. Use instead of x/y for editor content.'),
+      column: z.number().optional().describe('Editor column number (1-based). Used with line parameter.'),
     }),
     handler: (session, params) => handleHover(session, params as HoverParams),
   },
@@ -198,6 +206,8 @@ export const tools: ToolDefinition[] = [
       'Read current editor state via DOM scraping — no screenshot needed. ' +
       'Returns: active file name, cursor position (line/column), diagnostics count (errors/warnings), ' +
       'selection info, and visible editor lines with line numbers. ' +
+      'If the Problems panel is open (use vscode_run_command with "workbench.actions.view.problems" to open it), ' +
+      'also returns detailed diagnostics with severity, message, line number, and source. ' +
       'Much faster and cheaper than a screenshot for getting editor metadata. ' +
       'Use vscode_screenshot when you need to see visual layout or precise code content.',
     inputSchema: z.object({}),

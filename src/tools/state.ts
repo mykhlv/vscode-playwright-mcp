@@ -5,9 +5,11 @@
  * as structured text. Much cheaper than screenshots for getting editor metadata.
  */
 
+import type { Page } from 'playwright-core';
 import type { SessionManager } from '../session/session-manager.js';
 import type { GetStateParams, GetHoverParams } from '../types/tool-params.js';
 import { type ToolResult, textResult } from '../types/tool-results.js';
+import { ErrorCode, ToolError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
 
@@ -32,6 +34,52 @@ export const GET_STATE_SCRIPT = `(() => {
   // Diagnostics (errors, warnings) from status bar
   const errorsEl = document.querySelector('.status-bar-item[id*="status.problems"]');
   result.diagnostics = errorsEl ? errorsEl.textContent.trim() : null;
+
+  // Detailed diagnostics from the Problems panel (if open)
+  const markersPanel = document.querySelector('.markers-panel');
+  if (markersPanel) {
+    const rows = markersPanel.querySelectorAll('.monaco-list-row');
+    const items = [];
+    for (const row of rows) {
+      // Resource rows (file headers) have .file-icon; marker rows have .marker-icon
+      const fileIcon = row.querySelector('.file-icon');
+      if (fileIcon) {
+        // This is a file header row — skip, individual markers carry the info
+        continue;
+      }
+
+      const iconEl = row.querySelector('.marker-icon .codicon');
+      let severity = 'unknown';
+      if (iconEl) {
+        const cls = iconEl.className || '';
+        if (cls.includes('codicon-error')) severity = 'error';
+        else if (cls.includes('codicon-warning')) severity = 'warning';
+        else if (cls.includes('codicon-info')) severity = 'info';
+      }
+
+      // The marker row typically has: icon, message span, source span, code span, position span
+      const messageEl = row.querySelector('.marker-message-detail-text') ||
+                        row.querySelector('.marker-message');
+      const message = messageEl ? messageEl.textContent.trim() : row.textContent.trim();
+
+      // Position (line, column) is in a span with class "marker-line" or similar
+      const posEl = row.querySelector('.marker-line');
+      const position = posEl ? posEl.textContent.trim() : null;
+
+      // Source (e.g., "typescript", "eslint")
+      const sourceEl = row.querySelector('.marker-source');
+      const source = sourceEl ? sourceEl.textContent.trim() : null;
+
+      // Code (e.g., "ts(2304)")
+      const codeEl = row.querySelector('.marker-code');
+      const code = codeEl ? codeEl.textContent.trim() : null;
+
+      items.push({ severity, message, position, source, code });
+    }
+    if (items.length > 0) {
+      result.diagnosticsList = items;
+    }
+  }
 
   // Selection info from status bar
   const selectionEl = document.querySelector('.editor-status-selection');
@@ -109,10 +157,19 @@ export const GET_HOVER_SCRIPT = `(() => {
   return { found: false, text: null };
 })()`;
 
+interface DiagnosticItem {
+  severity: string;
+  message: string;
+  position: string | null;
+  source: string | null;
+  code: string | null;
+}
+
 interface EditorState {
   activeFile: string | null;
   cursorPosition: string | null;
   diagnostics: string | null;
+  diagnosticsList?: DiagnosticItem[];
   selection?: string;
   visibleLines: {
     first?: string[];
@@ -145,6 +202,16 @@ export async function handleGetState(
   parts.push(`Active file: ${state.activeFile ?? '(none)'}`);
   parts.push(`Cursor: ${state.cursorPosition ?? '(unknown)'}`);
   parts.push(`Diagnostics: ${state.diagnostics ?? '(none)'}`);
+
+  if (state.diagnosticsList && state.diagnosticsList.length > 0) {
+    parts.push('');
+    parts.push(`Problems panel (${state.diagnosticsList.length} items):`);
+    for (const d of state.diagnosticsList) {
+      const pos = d.position ? ` [${d.position}]` : '';
+      const src = d.source ? ` (${d.source}` + (d.code ? ` ${d.code}` : '') + ')' : (d.code ? ` (${d.code})` : '');
+      parts.push(`  ${d.severity.toUpperCase()}${pos}: ${d.message}${src}`);
+    }
+  }
 
   if (state.selection) {
     parts.push(`Selection: ${state.selection}`);
@@ -194,4 +261,75 @@ export async function handleGetHover(
   }
 
   return textResult(`Hover content:\n${result.text}`);
+}
+
+/**
+ * DOM scraping script that resolves editor line:column to pixel coordinates.
+ * Takes targetLine and targetCol as arguments via page.evaluate().
+ */
+export const RESOLVE_EDITOR_POSITION_SCRIPT = `([targetLine, targetCol]) => {
+  // Find the line number element matching the target line
+  const lineNumberEls = document.querySelectorAll('.margin-view-overlays .line-numbers');
+
+  for (const el of lineNumberEls) {
+    const lineNum = parseInt(el.textContent.trim(), 10);
+    if (lineNum !== targetLine) continue;
+
+    const lineRect = el.getBoundingClientRect();
+
+    // Find the corresponding view-line at the same vertical position
+    const viewLines = document.querySelectorAll('.view-lines .view-line');
+    for (const viewLine of viewLines) {
+      const viewRect = viewLine.getBoundingClientRect();
+      if (Math.abs(viewRect.top - lineRect.top) > 2) continue;
+
+      // Calculate character width from the first text span
+      const firstSpan = viewLine.querySelector('span span');
+      let charWidth = 7.2; // reasonable monospace fallback
+      if (firstSpan && firstSpan.textContent.length > 0) {
+        charWidth = firstSpan.getBoundingClientRect().width / firstSpan.textContent.length;
+      }
+
+      const x = viewRect.left + (targetCol - 1) * charWidth;
+      const y = viewRect.top + viewRect.height / 2;
+      return { x: Math.round(x), y: Math.round(y), found: true };
+    }
+  }
+
+  return { x: 0, y: 0, found: false };
+}`;
+
+interface EditorPositionResult {
+  x: number;
+  y: number;
+  found: boolean;
+}
+
+/**
+ * Resolve editor line:column to pixel coordinates via DOM scraping.
+ * The target line must be visible in the editor viewport.
+ */
+export async function resolveEditorPosition(
+  page: Page,
+  line: number,
+  column: number,
+): Promise<{ x: number; y: number }> {
+  const result = await withRetry(
+    () => page.evaluate(
+      RESOLVE_EDITOR_POSITION_SCRIPT,
+      [line, column],
+    ) as Promise<EditorPositionResult>,
+    'resolve_editor_position',
+  );
+
+  if (!result.found) {
+    throw new ToolError(
+      ErrorCode.INVALID_INPUT,
+      `Could not resolve editor position at line ${line}, column ${column}. ` +
+      'Make sure the line is visible in the editor viewport. ' +
+      'Use vscode_scroll or vscode_run_command with "Go to Line" to scroll the target line into view.',
+    );
+  }
+
+  return { x: result.x, y: result.y };
 }
