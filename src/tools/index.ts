@@ -10,7 +10,7 @@ import type {
   ClickParams, TypeParams, PressKeyParams,
   HoverParams, ScrollParams, DragParams,
   RunCommandParams, GetStateParams, GetHoverParams,
-  GifParams,
+  EnsureFileParams, GifParams,
 } from '../types/tool-params.js';
 import { handleLaunch, handleClose } from './launch.js';
 import { handleScreenshot, handleSnapshot } from './vision.js';
@@ -18,6 +18,7 @@ import { handleType, handlePressKey } from './keyboard.js';
 import { handleClick, handleHover, handleScroll, handleDrag } from './mouse.js';
 import { handleRunCommand } from './command.js';
 import { handleGetState, handleGetHover } from './state.js';
+import { handleEnsureFile } from './file.js';
 import { handleGif } from './gif.js';
 import type { GifRecorder } from '../session/gif-recorder.js';
 
@@ -204,9 +205,11 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
       name: 'vscode_run_command',
       description:
         'Execute a VS Code command via Command Palette automation (Meta+Shift+P → type → Enter). ' +
-        'Use this for any VS Code command: "editor.action.goToDefinition", "workbench.action.toggleSidebarVisibility", etc. ' +
         'The command is typed into the Command Palette and the top match is executed. ' +
-        'Use input for commands that require additional text typed into an input box (e.g., "Go to Line" needs a line number).',
+        'Use input for commands that open an input box (e.g., "Go to Line" needs a line number). ' +
+        'Common commands: "File: Revert File" (undo all changes), "View: Toggle Problems" (open/close diagnostics panel), ' +
+        '"Go to Line" (with input: line number), "editor.action.goToDefinition", "workbench.action.toggleSidebarVisibility", ' +
+        '"Close Editor", "View: Toggle Terminal".',
       inputSchema: z.object({
         command: z.string()
           .describe('VS Code command ID or name, e.g. "editor.action.goToDefinition" or "Toggle Sidebar".'),
@@ -252,6 +255,19 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         'If no tooltip is visible, returns a message suggesting to use vscode_hover first.',
       inputSchema: z.object({}),
       handler: (session, params) => handleGetHover(session, params as GetHoverParams),
+    },
+    {
+      name: 'vscode_ensure_file',
+      description:
+        'Open and activate a specific file in the editor by its path. ' +
+        'More reliable than Quick Open via vscode_run_command — verifies the correct file became active and retries on mismatch. ' +
+        'Use this instead of manually opening files to avoid "wrong active file" mistakes. ' +
+        'The path should match a file in the open workspace (absolute or relative paths accepted).',
+      inputSchema: z.object({
+        path: z.string()
+          .describe('File path to open. Can be absolute or workspace-relative. Example: "src/index.ts" or "/Users/me/project/src/index.ts".'),
+      }),
+      handler: (session, params) => handleEnsureFile(session, params as EnsureFileParams),
     },
     {
       name: 'vscode_gif',

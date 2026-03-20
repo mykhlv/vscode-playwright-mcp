@@ -139,6 +139,42 @@ export const GET_STATE_SCRIPT = `(() => {
     }
   }
 
+  // Completions from the suggest widget (IntelliSense popup)
+  const suggestWidget = document.querySelector('.editor-widget.suggest-widget');
+  if (suggestWidget &&
+      suggestWidget.style.display !== 'none' &&
+      (suggestWidget.getAttribute('monaco-visible-content-widget') === 'true' ||
+       !suggestWidget.classList.contains('hidden'))) {
+    const rows = suggestWidget.querySelectorAll('.monaco-list-row');
+    const completions = [];
+    for (const row of rows) {
+      const labelEl = row.querySelector('.label-name') || row.querySelector('.monaco-icon-label-container .label-name');
+      const label = labelEl ? labelEl.textContent.trim() : null;
+      if (!label) continue;
+
+      // Kind from the icon class (e.g., codicon-symbol-method, codicon-symbol-property)
+      const iconEl = row.querySelector('.codicon[class*="codicon-symbol-"]');
+      let kind = null;
+      if (iconEl) {
+        const cls = iconEl.className;
+        const kindMatch = cls.match(/codicon-symbol-(\\w+)/);
+        if (kindMatch) kind = kindMatch[1];
+      }
+
+      // Detail/qualifier text
+      const qualifierEl = row.querySelector('.qualifier') || row.querySelector('.details-label');
+      const detail = qualifierEl ? qualifierEl.textContent.trim() : null;
+
+      // Highlighted (selected) row
+      const focused = row.classList.contains('focused');
+
+      completions.push({ label, kind, detail, focused });
+    }
+    if (completions.length > 0) {
+      result.completions = completions;
+    }
+  }
+
   // Visible editor lines
   const viewLines = document.querySelectorAll('.view-lines .view-line');
   const lines = [];
@@ -206,11 +242,19 @@ interface DiagnosticItem {
   file: string | null;
 }
 
+interface CompletionItem {
+  label: string;
+  kind: string | null;
+  detail: string | null;
+  focused: boolean;
+}
+
 interface EditorState {
   activeFile: string | null;
   cursorPosition: string | null;
   diagnostics: string | null;
   diagnosticsList?: DiagnosticItem[];
+  completions?: CompletionItem[];
   selection?: string;
   visibleLines: {
     all: string[];
@@ -314,6 +358,17 @@ export async function handleGetState(
         const src = d.source ? ` (${d.source}` + (d.code ? ` ${d.code}` : '') + ')' : (d.code ? ` (${d.code})` : '');
         parts.push(`  ${d.severity.toUpperCase()}${pos}: ${d.message}${src}`);
       }
+    }
+  }
+
+  if (state.completions && state.completions.length > 0) {
+    parts.push('');
+    parts.push(`Completions (${state.completions.length} items):`);
+    for (const c of state.completions) {
+      const prefix = c.kind ? `[${c.kind}] ` : '';
+      const detailStr = c.detail ? ` — ${c.detail}` : '';
+      const focusStr = c.focused ? ' (selected)' : '';
+      parts.push(`  ${prefix}${c.label}${detailStr}${focusStr}`);
     }
   }
 

@@ -90,6 +90,10 @@ export interface GetHoverParams {
   // No parameters
 }
 
+export interface EnsureFileParams {
+  path: string;
+}
+
 export interface GifParams {
   action: 'start' | 'stop' | 'save';
   filename?: string;

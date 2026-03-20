@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Added
+- `vscode_ensure_file` tool: reliably open and activate a specific file by path with verification and retry (replaces error-prone Quick Open workflow)
+- `vscode_get_state` now returns IntelliSense completions when the suggest widget is visible (label, kind, detail, selected state)
 - `vscode_gif` tool: record VS Code actions as animated GIF with start/stop/save actions
 - Auto-capture hook captures frames after each successful tool call while recording
 - GifRecorder class with PNG-to-GIF encoding via gifenc, nearest-neighbor scaling (1280x720 → 640x360), frame limit protection
