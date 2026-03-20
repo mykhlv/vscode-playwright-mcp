@@ -191,12 +191,12 @@ export const tools: ToolDefinition[] = [
       'Execute a VS Code command via Command Palette automation (Meta+Shift+P → type → Enter). ' +
       'Use this for any VS Code command: "editor.action.goToDefinition", "workbench.action.toggleSidebarVisibility", etc. ' +
       'The command is typed into the Command Palette and the top match is executed. ' +
-      'Use args for commands that require additional text input (e.g., "Go to Line" needs a line number).',
+      'Use input for commands that require additional text typed into an input box (e.g., "Go to Line" needs a line number).',
     inputSchema: z.object({
       command: z.string()
         .describe('VS Code command ID or name, e.g. "editor.action.goToDefinition" or "Toggle Sidebar".'),
-      args: z.string().optional()
-        .describe('Optional text argument typed after the command is selected (e.g., a line number for "Go to Line").'),
+      input: z.string().optional()
+        .describe('Optional text typed into the input box after the command is selected (e.g., a line number for "Go to Line"). This is keyboard input, not programmatic arguments.'),
     }),
     handler: (session, params) => handleRunCommand(session, params as RunCommandParams),
   },
@@ -210,7 +210,18 @@ export const tools: ToolDefinition[] = [
       'also returns detailed diagnostics with severity, message, line number, and source. ' +
       'Much faster and cheaper than a screenshot for getting editor metadata. ' +
       'Use vscode_screenshot when you need to see visual layout or precise code content.',
-    inputSchema: z.object({}),
+    inputSchema: z.object({
+      diagnostics_file: z.string().optional()
+        .describe('Filter diagnostics to only show entries matching this filename.'),
+      diagnostics_severity: z.enum(['error', 'warning', 'info']).optional()
+        .describe('Filter diagnostics by minimum severity: "error" shows only errors, "warning" shows errors and warnings, "info" shows all.'),
+      visible_lines: z.union([z.literal('all'), z.literal('none'), z.number()]).optional()
+        .describe('Control visible lines output: "all" returns all visible lines, "none" omits lines, a number returns up to N lines. Default: 15.'),
+      wait_for_diagnostics: z.boolean().optional()
+        .describe('If true, poll until diagnostics appear (or timeout). Useful after opening a file when LSP needs time to index.'),
+      timeout: z.number().optional()
+        .describe('Max wait time in ms for wait_for_diagnostics. Default: 5000.'),
+    }),
     handler: (session, params) => handleGetState(session, params as GetStateParams),
   },
   {

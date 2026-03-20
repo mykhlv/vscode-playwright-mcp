@@ -74,11 +74,15 @@ export interface DragParams {
 
 export interface RunCommandParams {
   command: string;
-  args?: string;
+  input?: string;
 }
 
 export interface GetStateParams {
-  // No parameters
+  diagnostics_file?: string;
+  diagnostics_severity?: 'error' | 'warning' | 'info';
+  visible_lines?: 'all' | 'none' | number;
+  wait_for_diagnostics?: boolean;
+  timeout?: number;
 }
 
 export interface GetHoverParams {

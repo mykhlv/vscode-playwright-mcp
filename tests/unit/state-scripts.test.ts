@@ -41,11 +41,11 @@ describe('GET_STATE_SCRIPT', () => {
     expect(GET_STATE_SCRIPT).toContain('result.selection');
   });
 
-  it('handles truncation for many visible lines', () => {
-    // Should have logic for > 20 lines (first 10 + last 5)
-    expect(GET_STATE_SCRIPT).toContain('numberedLines.length > 20');
-    expect(GET_STATE_SCRIPT).toContain('slice(0, 10)');
-    expect(GET_STATE_SCRIPT).toContain('slice(-5)');
+  it('returns all visible lines for handler-side truncation', () => {
+    // Truncation is now handled by the TypeScript handler via visible_lines param.
+    // The script should return all lines.
+    expect(GET_STATE_SCRIPT).toContain('all: numberedLines');
+    expect(GET_STATE_SCRIPT).toContain('totalVisible: numberedLines.length');
   });
 });
 

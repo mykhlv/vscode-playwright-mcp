@@ -44,18 +44,18 @@ export async function handleRunCommand(
   // Press Enter to execute the top match
   await page.keyboard.press('Enter');
 
-  // If there's an additional text argument, type it after the command executes
-  if (params.args) {
+  // If there's additional text input, type it after the command executes
+  if (params.input) {
     await page.waitForTimeout(200);
-    await page.keyboard.type(params.args, { delay: 0 });
+    await page.keyboard.type(params.input, { delay: 0 });
     await page.keyboard.press('Enter');
   }
 
   // Let the command take effect
   await page.waitForTimeout(COMMAND_SETTLE_MS);
 
-  const argsDesc = params.args ? ` with args "${params.args}"` : '';
+  const inputDesc = params.input ? ` with input "${params.input}"` : '';
   return textResult(
-    `Executed command "${params.command}"${argsDesc} via Command Palette. Use vscode_screenshot or vscode_get_state to verify the result.`,
+    `Executed command "${params.command}"${inputDesc} via Command Palette. Use vscode_screenshot or vscode_get_state to verify the result.`,
   );
 }
