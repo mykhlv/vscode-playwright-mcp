@@ -70,9 +70,39 @@ function scaleDown(
   return dst;
 }
 
+const PROGRESS_BAR_HEIGHT = 4;
+const PROGRESS_BAR_COLOR = [0, 122, 204, 255] as const; // VS Code blue (#007ACC)
+const PROGRESS_BAR_BG = [30, 30, 30, 255] as const;     // Dark background
+
+/** Draw a thin progress bar at the bottom of an RGBA frame buffer (mutates in place). */
+function drawProgressBar(
+  rgba: Uint8Array,
+  width: number,
+  height: number,
+  frameIndex: number,
+  totalFrames: number,
+): void {
+  const progress = (frameIndex + 1) / totalFrames;
+  const filledWidth = Math.round(width * progress);
+  const startY = height - PROGRESS_BAR_HEIGHT;
+
+  for (let y = startY; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const color = x < filledWidth ? PROGRESS_BAR_COLOR : PROGRESS_BAR_BG;
+      rgba[idx] = color[0];
+      rgba[idx + 1] = color[1];
+      rgba[idx + 2] = color[2];
+      rgba[idx + 3] = color[3];
+    }
+  }
+}
+
 export class GifRecorder {
   private frames: Frame[] = [];
   private recording = false;
+  /** Set to true if frames were ever halved (safety fallback). */
+  private halved = false;
 
   get isRecording(): boolean {
     return this.recording;
@@ -87,6 +117,7 @@ export class GifRecorder {
    */
   startRecording(): void {
     this.frames = [];
+    this.halved = false;
     this.recording = true;
     logger.info('gif_recording_started');
   }
@@ -99,17 +130,18 @@ export class GifRecorder {
     if (!this.recording) return;
 
     try {
+      // Stop accepting new frames once the limit is reached
+      if (this.frames.length >= MAX_FRAMES) {
+        logger.warn('gif_frame_limit_reached', {
+          limit: MAX_FRAMES,
+          hint: 'Recording stopped automatically. Stop and save the GIF to continue.',
+        });
+        this.recording = false;
+        return;
+      }
+
       const png = await page.screenshot({ type: 'png', timeout: 5000 });
       this.frames.push({ png, timestamp: Date.now() });
-
-      // If we exceeded the limit, drop every other frame to free memory
-      if (this.frames.length > MAX_FRAMES) {
-        logger.warn('gif_frame_limit_exceeded', {
-          frameCount: this.frames.length,
-          limit: MAX_FRAMES,
-        });
-        this.frames = this.frames.filter((_, i) => i % 2 === 0);
-      }
 
       logger.debug('gif_frame_captured', { frameCount: this.frames.length });
     } catch (error) {
@@ -132,7 +164,14 @@ export class GifRecorder {
    * Encode all captured frames into an animated GIF and write to disk.
    * Returns the absolute path and file size.
    */
-  async save(filename: string, frameDelay?: number): Promise<{ path: string; size: number; frameCount: number }> {
+  async save(filename: string, frameDelay?: number, progressBar?: boolean): Promise<{ path: string; size: number; frameCount: number }> {
+    // Auto-stop recording if still active to prevent capturing more frames
+    // while we iterate over the frame list
+    if (this.recording) {
+      logger.info('gif_auto_stopped_for_save');
+      this.stopRecording();
+    }
+
     if (this.frames.length === 0) {
       throw new Error('No frames captured. Start recording and perform some actions first.');
     }
@@ -142,13 +181,21 @@ export class GifRecorder {
     const { GIFEncoder, quantize, applyPalette } = await loadGifenc();
     const encoder = GIFEncoder();
 
+    /** Fixed delay used as safety fallback if frames were ever halved */
+    const HALVED_FIXED_DELAY_MS = 500;
+
     for (let i = 0; i < this.frames.length; i++) {
       const frame = this.frames[i]!;
       const parsed = PNG.sync.read(frame.png);
 
-      // Scale down if the source is larger than target GIF dimensions
+      // Only scale down when the source is larger than target dimensions.
+      // If the source is smaller, use its original dimensions to avoid
+      // blocky nearest-neighbor upscaling.
       let rgba: Uint8Array;
-      if (parsed.width !== GIF_WIDTH || parsed.height !== GIF_HEIGHT) {
+      let frameWidth: number;
+      let frameHeight: number;
+
+      if (parsed.width > GIF_WIDTH || parsed.height > GIF_HEIGHT) {
         rgba = scaleDown(
           new Uint8Array(parsed.data.buffer, parsed.data.byteOffset, parsed.data.byteLength),
           parsed.width,
@@ -156,14 +203,21 @@ export class GifRecorder {
           GIF_WIDTH,
           GIF_HEIGHT,
         );
+        frameWidth = GIF_WIDTH;
+        frameHeight = GIF_HEIGHT;
       } else {
         rgba = new Uint8Array(parsed.data.buffer, parsed.data.byteOffset, parsed.data.byteLength);
+        frameWidth = parsed.width;
+        frameHeight = parsed.height;
       }
 
       // Use explicit delay or calculate from timestamps
       let delay: number;
       if (frameDelay != null) {
         delay = Math.max(MIN_FRAME_DELAY_MS, Math.min(MAX_FRAME_DELAY_MS, frameDelay));
+      } else if (this.halved) {
+        // After halving, timestamp-based delays are meaningless — use a fixed delay
+        delay = HALVED_FIXED_DELAY_MS;
       } else if (i < this.frames.length - 1) {
         delay = this.frames[i + 1]!.timestamp - frame.timestamp;
         delay = Math.max(MIN_FRAME_DELAY_MS, Math.min(MAX_FRAME_DELAY_MS, delay));
@@ -172,10 +226,14 @@ export class GifRecorder {
         delay = 1000;
       }
 
+      if (progressBar) {
+        drawProgressBar(rgba, frameWidth, frameHeight, i, this.frames.length);
+      }
+
       const palette = quantize(rgba, 256);
       const indexed = applyPalette(rgba, palette);
 
-      encoder.writeFrame(indexed, GIF_WIDTH, GIF_HEIGHT, {
+      encoder.writeFrame(indexed, frameWidth, frameHeight, {
         palette,
         delay,
       });

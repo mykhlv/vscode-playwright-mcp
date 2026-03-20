@@ -93,4 +93,5 @@ export interface GifParams {
   action: 'start' | 'stop' | 'save';
   filename?: string;
   delay?: number;
+  progress_bar?: boolean;
 }

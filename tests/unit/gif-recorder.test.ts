@@ -124,7 +124,7 @@ describe('GifRecorder', () => {
     expect(recorder.frameCount).toBe(0);
   });
 
-  it('drops every other frame when exceeding max limit', async () => {
+  it('stops recording when reaching max frame limit', async () => {
     const mockPage = {
       screenshot: async () => createPngBuffer(4, 4), // tiny PNG for speed
     } as any;
@@ -136,8 +136,8 @@ describe('GifRecorder', () => {
       await recorder.captureFrame(mockPage);
     }
 
-    // After exceeding 100, should have been halved
-    expect(recorder.frameCount).toBeLessThanOrEqual(100);
-    expect(recorder.frameCount).toBeGreaterThan(0);
+    // Should have exactly MAX_FRAMES and recording should be stopped
+    expect(recorder.frameCount).toBe(100);
+    expect(recorder.isRecording).toBe(false);
   });
 });

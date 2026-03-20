@@ -253,6 +253,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         action: z.enum(['start', 'stop', 'save']).describe('Recording action.'),
         filename: z.string().optional().describe('Output filename for "save" action. Absolute path or relative to workspace.'),
         delay: z.number().optional().describe('Frame delay in ms for "save" action. Overrides auto-calculated timing. Range: 100-2000ms.'),
+        progress_bar: z.boolean().optional().describe('Show a thin progress bar at the bottom of the GIF. Default: false.'),
       }),
       handler: (_session, params) => handleGif(recorder, params as GifParams),
     },
