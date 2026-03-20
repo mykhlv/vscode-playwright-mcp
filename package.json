@@ -14,7 +14,9 @@
     "typecheck": "tsc --noEmit",
     "spike:1": "tsx spikes/01-launch-screenshot.ts",
     "spike:2": "tsx spikes/02-a11y-tree.ts",
-    "spike:3": "tsx spikes/03-interaction-loop.ts"
+    "spike:3": "tsx spikes/03-interaction-loop.ts",
+    "spike:4": "tsx spikes/04-evaluate-vscode-api.ts",
+    "spike:5": "tsx spikes/05-snapshot-tooltips.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
