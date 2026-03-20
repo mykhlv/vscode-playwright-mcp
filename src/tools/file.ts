@@ -32,7 +32,7 @@ const GET_ACTIVE_FILE_SCRIPT = `(() => {
  * Check if the active file matches the expected filename.
  * Compares by basename since Quick Open shows only the filename in tabs.
  */
-function isFileMatch(activeFile: string | null, expectedPath: string): boolean {
+export function isFileMatch(activeFile: string | null, expectedPath: string): boolean {
   if (!activeFile) return false;
   // Extract basename, handling both / and \ separators
   const segments = expectedPath.split(/[/\\]/);

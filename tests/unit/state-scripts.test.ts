@@ -101,6 +101,31 @@ describe('resolveEditorPosition', () => {
   });
 });
 
+describe('GET_STATE_SCRIPT completions scraping', () => {
+  it('queries suggest widget selectors', () => {
+    expect(GET_STATE_SCRIPT).toContain('.editor-widget.suggest-widget');
+    expect(GET_STATE_SCRIPT).toContain('.monaco-list-row');
+  });
+
+  it('checks suggest widget visibility', () => {
+    expect(GET_STATE_SCRIPT).toContain('monaco-visible-content-widget');
+    expect(GET_STATE_SCRIPT).toContain('classList.contains');
+    expect(GET_STATE_SCRIPT).toContain("'hidden'");
+  });
+
+  it('extracts completion item properties', () => {
+    expect(GET_STATE_SCRIPT).toContain('.label-name');
+    expect(GET_STATE_SCRIPT).toContain('codicon-symbol-');
+    expect(GET_STATE_SCRIPT).toContain('.qualifier');
+    expect(GET_STATE_SCRIPT).toContain('.details-label');
+    expect(GET_STATE_SCRIPT).toContain('focused');
+  });
+
+  it('stores completions on result object', () => {
+    expect(GET_STATE_SCRIPT).toContain('result.completions');
+  });
+});
+
 describe('GET_STATE_SCRIPT diagnostics panel scraping', () => {
   it('scrapes markers panel rows', () => {
     expect(GET_STATE_SCRIPT).toContain('.markers-panel');
