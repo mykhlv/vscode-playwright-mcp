@@ -213,9 +213,7 @@ interface EditorState {
   diagnosticsList?: DiagnosticItem[];
   selection?: string;
   visibleLines: {
-    first?: string[];
-    last?: string[];
-    all?: string[];
+    all: string[];
     totalVisible: number;
   };
 }
@@ -334,37 +332,26 @@ export async function handleGetState(
   } else if (visibleLines.totalVisible === 0) {
     parts.push('No editor lines visible (no file open or editor not focused).');
   } else if (visibleLinesParam === 'all') {
-    // Return all visible lines
-    const allLines = visibleLines.all ?? [
-      ...(visibleLines.first ?? []),
-      ...(visibleLines.last ?? []),
-    ];
     parts.push(`Visible lines (${visibleLines.totalVisible}):`);
-    for (const line of allLines) {
+    for (const line of visibleLines.all) {
       parts.push(`  ${line}`);
     }
   } else {
-    // Numeric limit
     const maxLines = typeof visibleLinesParam === 'number' ? visibleLinesParam : 15;
-    const allLines = visibleLines.all ?? [
-      ...(visibleLines.first ?? []),
-      ...(visibleLines.last ?? []),
-    ];
-    if (allLines.length <= maxLines) {
+    if (visibleLines.all.length <= maxLines) {
       parts.push(`Visible lines (${visibleLines.totalVisible}):`);
-      for (const line of allLines) {
+      for (const line of visibleLines.all) {
         parts.push(`  ${line}`);
       }
     } else {
-      // Show first portion and last portion within the limit
       const lastCount = Math.min(5, Math.floor(maxLines / 3));
       const firstCount = maxLines - lastCount;
       parts.push(`Visible lines (${visibleLines.totalVisible} total, showing first ${firstCount} + last ${lastCount}):`);
-      for (const line of allLines.slice(0, firstCount)) {
+      for (const line of visibleLines.all.slice(0, firstCount)) {
         parts.push(`  ${line}`);
       }
       parts.push('  ...');
-      for (const line of allLines.slice(-lastCount)) {
+      for (const line of visibleLines.all.slice(-lastCount)) {
         parts.push(`  ${line}`);
       }
     }

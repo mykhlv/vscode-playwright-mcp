@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- `vscode_gif` tool: record VS Code actions as animated GIF with start/stop/save actions
+- Auto-capture hook captures frames after each successful tool call while recording
+- GifRecorder class with PNG-to-GIF encoding via gifenc, nearest-neighbor scaling (1280x720 → 640x360), frame limit protection
 - `vscode_run_command` tool: execute VS Code commands via Command Palette automation (Meta+Shift+P → type → Enter)
 - `vscode_get_state` tool: read editor state via DOM scraping (active file, cursor position, diagnostics, visible lines)
 - `vscode_get_hover` tool: read hover tooltip content as text from `.monaco-hover-content` DOM elements

@@ -23,6 +23,9 @@ export const ErrorCode = {
   ACTION_FAILED: 'ACTION_FAILED',
   TIMEOUT: 'TIMEOUT',
 
+  // GIF errors
+  GIF_ERROR: 'GIF_ERROR',
+
   // System errors
   VSCODE_NOT_FOUND: 'VSCODE_NOT_FOUND',
   CLEANUP_FAILED: 'CLEANUP_FAILED',

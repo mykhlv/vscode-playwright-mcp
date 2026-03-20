@@ -88,3 +88,9 @@ export interface GetStateParams {
 export interface GetHoverParams {
   // No parameters
 }
+
+export interface GifParams {
+  action: 'start' | 'stop' | 'save';
+  filename?: string;
+  delay?: number;
+}

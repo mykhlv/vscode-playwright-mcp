@@ -4,8 +4,7 @@
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createServer } from './server.js';
-import { setLogLevel } from './utils/logger.js';
-import { logger } from './utils/logger.js';
+import { setLogLevel, logger } from './utils/logger.js';
 
 function parseArgs(): { verbose: boolean; vscodePath?: string } {
   const args = process.argv.slice(2);

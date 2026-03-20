@@ -2,6 +2,7 @@
  * Tool handlers: vscode_click, vscode_hover, vscode_scroll, vscode_drag
  */
 
+import type { Page } from 'playwright-core';
 import type { SessionManager } from '../session/session-manager.js';
 import type { ClickParams, HoverParams, ScrollParams, DragParams } from '../types/tool-params.js';
 import { type ToolResult, textResult } from '../types/tool-results.js';
@@ -11,15 +12,23 @@ import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
 import { resolveEditorPosition } from './state.js';
 
-export async function handleClick(
-  session: SessionManager,
-  params: ClickParams,
-): Promise<ToolResult> {
-  logger.info('tool_call', { tool: 'vscode_click', params });
+interface PositionParams {
+  x?: number;
+  y?: number;
+  line?: number;
+  column?: number;
+}
 
-  const page = session.getPage();
-  const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
+interface ResolvedPosition {
+  x: number;
+  y: number;
+  description: string;
+}
 
+async function resolvePosition(
+  page: Page,
+  params: PositionParams,
+): Promise<ResolvedPosition> {
   const hasXY = params.x !== undefined && params.y !== undefined;
   const hasLineCol = params.line !== undefined && params.column !== undefined;
 
@@ -36,20 +45,32 @@ export async function handleClick(
     );
   }
 
-  let x: number;
-  let y: number;
-  let posDesc: string;
-
   if (hasLineCol) {
     const resolved = await resolveEditorPosition(page, params.line!, params.column!);
-    x = resolved.x;
-    y = resolved.y;
-    posDesc = `line ${params.line}, column ${params.column} → (${x}, ${y})`;
-  } else {
-    x = params.x!;
-    y = params.y!;
-    posDesc = `(${x}, ${y})`;
+    return {
+      x: resolved.x,
+      y: resolved.y,
+      description: `line ${params.line}, column ${params.column} → (${resolved.x}, ${resolved.y})`,
+    };
   }
+
+  return {
+    x: params.x!,
+    y: params.y!,
+    description: `(${params.x!}, ${params.y!})`,
+  };
+}
+
+export async function handleClick(
+  session: SessionManager,
+  params: ClickParams,
+): Promise<ToolResult> {
+  logger.info('tool_call', { tool: 'vscode_click', params });
+
+  const page = session.getPage();
+  const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
+
+  const { x, y, description: posDesc } = await resolvePosition(page, params);
 
   validateCoordinates(x, y, viewport);
   validateClickCount(params.click_count);
@@ -87,36 +108,7 @@ export async function handleHover(
   const page = session.getPage();
   const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
 
-  const hasXY = params.x !== undefined && params.y !== undefined;
-  const hasLineCol = params.line !== undefined && params.column !== undefined;
-
-  if (hasXY && hasLineCol) {
-    throw new ToolError(
-      ErrorCode.INVALID_INPUT,
-      'Provide either (x, y) OR (line, column), not both.',
-    );
-  }
-  if (!hasXY && !hasLineCol) {
-    throw new ToolError(
-      ErrorCode.INVALID_INPUT,
-      'Provide either (x, y) pixel coordinates or (line, column) editor position.',
-    );
-  }
-
-  let x: number;
-  let y: number;
-  let posDesc: string;
-
-  if (hasLineCol) {
-    const resolved = await resolveEditorPosition(page, params.line!, params.column!);
-    x = resolved.x;
-    y = resolved.y;
-    posDesc = `line ${params.line}, column ${params.column} → (${x}, ${y})`;
-  } else {
-    x = params.x!;
-    y = params.y!;
-    posDesc = `(${x}, ${y})`;
-  }
+  const { x, y, description: posDesc } = await resolvePosition(page, params);
 
   validateCoordinates(x, y, viewport);
 
