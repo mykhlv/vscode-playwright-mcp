@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+- `vscode_run_command` tool: execute VS Code commands via Command Palette automation (Meta+Shift+P → type → Enter)
+- `vscode_get_state` tool: read editor state via DOM scraping (active file, cursor position, diagnostics, visible lines)
+- `vscode_get_hover` tool: read hover tooltip content as text from `.monaco-hover-content` DOM elements
+- Unit tests for DOM scraping script structure and selectors
+
 ### Changed
 - Migrated tool registration from deprecated `server.tool()` to `server.registerTool()` API
 - Replaced raw JSON Schema tool definitions with Zod schemas for type-safe parameter validation

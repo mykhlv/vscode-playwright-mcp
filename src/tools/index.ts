@@ -9,11 +9,14 @@ import type {
   LaunchParams, CloseParams, ScreenshotParams, SnapshotParams,
   ClickParams, TypeParams, PressKeyParams,
   HoverParams, ScrollParams, DragParams,
+  RunCommandParams, GetStateParams, GetHoverParams,
 } from '../types/tool-params.js';
 import { handleLaunch, handleClose } from './launch.js';
 import { handleScreenshot, handleSnapshot } from './vision.js';
 import { handleType, handlePressKey } from './keyboard.js';
 import { handleClick, handleHover, handleScroll, handleDrag } from './mouse.js';
+import { handleRunCommand } from './command.js';
+import { handleGetState, handleGetHover } from './state.js';
 
 export interface ToolDefinition {
   name: string;
@@ -173,5 +176,41 @@ export const tools: ToolDefinition[] = [
       end_y: z.number().describe('End Y coordinate (logical pixels).'),
     }),
     handler: (session, params) => handleDrag(session, params as DragParams),
+  },
+  {
+    name: 'vscode_run_command',
+    description:
+      'Execute a VS Code command via Command Palette automation (Meta+Shift+P → type → Enter). ' +
+      'Use this for any VS Code command: "editor.action.goToDefinition", "workbench.action.toggleSidebarVisibility", etc. ' +
+      'The command is typed into the Command Palette and the top match is executed. ' +
+      'Use args for commands that require additional text input (e.g., "Go to Line" needs a line number).',
+    inputSchema: z.object({
+      command: z.string()
+        .describe('VS Code command ID or name, e.g. "editor.action.goToDefinition" or "Toggle Sidebar".'),
+      args: z.string().optional()
+        .describe('Optional text argument typed after the command is selected (e.g., a line number for "Go to Line").'),
+    }),
+    handler: (session, params) => handleRunCommand(session, params as RunCommandParams),
+  },
+  {
+    name: 'vscode_get_state',
+    description:
+      'Read current editor state via DOM scraping — no screenshot needed. ' +
+      'Returns: active file name, cursor position (line/column), diagnostics count (errors/warnings), ' +
+      'selection info, and visible editor lines with line numbers. ' +
+      'Much faster and cheaper than a screenshot for getting editor metadata. ' +
+      'Use vscode_screenshot when you need to see visual layout or precise code content.',
+    inputSchema: z.object({}),
+    handler: (session, params) => handleGetState(session, params as GetStateParams),
+  },
+  {
+    name: 'vscode_get_hover',
+    description:
+      'Read the content of a visible hover tooltip as text. ' +
+      'Must be called AFTER vscode_hover has triggered a tooltip at specific coordinates. ' +
+      'Returns the hover text (type info, documentation, error details) without needing a screenshot. ' +
+      'If no tooltip is visible, returns a message suggesting to use vscode_hover first.',
+    inputSchema: z.object({}),
+    handler: (session, params) => handleGetHover(session, params as GetHoverParams),
   },
 ];

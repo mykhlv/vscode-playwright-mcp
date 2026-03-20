@@ -67,3 +67,16 @@ export interface DragParams {
   end_x: number;
   end_y: number;
 }
+
+export interface RunCommandParams {
+  command: string;
+  args?: string;
+}
+
+export interface GetStateParams {
+  // No parameters
+}
+
+export interface GetHoverParams {
+  // No parameters
+}
