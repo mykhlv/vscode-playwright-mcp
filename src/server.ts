@@ -17,6 +17,7 @@ const SKIP_GIF_CAPTURE = new Set([
   'vscode_gif', 'vscode_launch', 'vscode_close',
   'vscode_get_hover', 'vscode_get_state', 'vscode_snapshot',
   'vscode_press_key', 'vscode_type',
+  'vscode_evaluate', 'vscode_wait_for', 'vscode_console',
 ]);
 
 export function createServer(): McpServer {

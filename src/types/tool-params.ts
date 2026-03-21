@@ -97,3 +97,21 @@ export interface GifParams {
   progress_bar?: boolean;
   capture_on?: 'auto' | 'manual';
 }
+
+export interface EvaluateParams {
+  expression: string;
+  timeout?: number;
+}
+
+export interface WaitForParams {
+  selector?: string;
+  state?: 'visible' | 'hidden' | 'attached' | 'detached';
+  timeout?: number;
+  text?: string;
+}
+
+export interface ConsoleParams {
+  clear?: boolean;
+  level?: 'log' | 'warn' | 'error' | 'info' | 'all';
+  limit?: number;
+}

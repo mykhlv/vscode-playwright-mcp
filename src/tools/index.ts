@@ -11,6 +11,7 @@ import type {
   HoverParams, ScrollParams, DragParams,
   RunCommandParams, GetStateParams, GetHoverParams,
   EnsureFileParams, GifParams,
+  EvaluateParams, WaitForParams, ConsoleParams,
 } from '../types/tool-params.js';
 import { handleLaunch, handleClose } from './launch.js';
 import { handleScreenshot, handleSnapshot } from './vision.js';
@@ -20,6 +21,9 @@ import { handleRunCommand } from './command.js';
 import { handleGetState, handleGetHover } from './state.js';
 import { handleEnsureFile } from './file.js';
 import { handleGif } from './gif.js';
+import { handleEvaluate } from './evaluate.js';
+import { handleWaitFor } from './wait-for.js';
+import { handleConsole } from './console.js';
 import type { GifRecorder } from '../session/gif-recorder.js';
 
 export interface ToolDefinition {
@@ -288,6 +292,58 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         ),
       }),
       handler: (_session, params) => handleGif(recorder, params as GifParams),
+    },
+    {
+      name: 'vscode_evaluate',
+      description:
+        'Evaluate a JavaScript expression in the VS Code renderer process. ' +
+        'Returns the result serialized as JSON. ' +
+        'Use this for advanced DOM queries, reading VS Code internal state, or running arbitrary scripts. ' +
+        'The expression runs in the Electron renderer context with full access to the DOM and VS Code APIs.',
+      inputSchema: z.object({
+        expression: z.string()
+          .describe('JS expression to evaluate in the VS Code renderer process. Result returned as JSON.'),
+        timeout: z.number().optional()
+          .describe('Max execution time in ms. Default: 30000.'),
+      }),
+      handler: (session, params) => handleEvaluate(session, params as EvaluateParams),
+    },
+    {
+      name: 'vscode_wait_for',
+      description:
+        'Wait for a condition before proceeding. ' +
+        'Three modes: (1) CSS selector — wait for an element to reach a state (visible/hidden/attached/detached). ' +
+        '(2) Text — wait for text to appear anywhere on the page. ' +
+        '(3) Neither — simple delay. ' +
+        'Cannot combine selector and text. Default timeout: 5000ms.',
+      inputSchema: z.object({
+        selector: z.string().optional()
+          .describe('CSS selector to wait for.'),
+        state: z.enum(['visible', 'hidden', 'attached', 'detached']).optional()
+          .describe('Element state to wait for. Only valid with selector. Default: visible.'),
+        timeout: z.number().optional()
+          .describe('Max wait time in ms. Default: 5000.'),
+        text: z.string().optional()
+          .describe('Text content to wait for on the page. Cannot be combined with selector.'),
+      }),
+      handler: (session, params) => handleWaitFor(session, params as WaitForParams),
+    },
+    {
+      name: 'vscode_console',
+      description:
+        'Retrieve console messages captured from the VS Code renderer process. ' +
+        'Messages are collected continuously after launch. ' +
+        'Filter by level (log/warn/error/info/all) and optionally clear the buffer after reading. ' +
+        'Useful for debugging extension output, checking for errors, and verifying log messages.',
+      inputSchema: z.object({
+        clear: z.boolean().optional()
+          .describe('If true, clear the message buffer after retrieving. Default: false.'),
+        level: z.enum(['log', 'warn', 'error', 'info', 'all']).optional()
+          .describe('Filter by message level. "warn" matches Playwright\'s "warning" type. Default: all.'),
+        limit: z.number().optional()
+          .describe('Max number of messages to return. Returns most recent. Default: all.'),
+      }),
+      handler: (session, params) => handleConsole(session, params as ConsoleParams),
     },
   ];
 }

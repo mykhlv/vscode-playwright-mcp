@@ -7,6 +7,7 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { SessionState, SessionStateMachine } from './session-state.js';
 import { launchVSCode, type LaunchConfig } from './vscode-launcher.js';
 import { trackSession, untrackSession, cleanupTempDir, installShutdownHooks } from './cleanup.js';
+import { ConsoleCollector } from './console-collector.js';
 import { ErrorCode, ToolError } from '../types/errors.js';
 import { logger } from '../utils/logger.js';
 
@@ -19,6 +20,7 @@ export class SessionManager {
   private page: Page | null = null;
   private userDataDir: string | null = null;
   private pid = 0;
+  readonly consoleCollector = new ConsoleCollector();
 
   constructor() {
     installShutdownHooks();
@@ -86,6 +88,9 @@ export class SessionManager {
       this.page = result.window;
       this.userDataDir = result.userDataDir;
       this.pid = result.pid;
+
+      // Start collecting console messages from the renderer
+      this.consoleCollector.attach(this.page);
 
       // Track for cleanup hooks
       trackSession(this.pid, this.userDataDir);
@@ -186,6 +191,7 @@ export class SessionManager {
     if (this.userDataDir) {
       await cleanupTempDir(this.userDataDir);
     }
+    this.consoleCollector.detach();
     this.app = null;
     this.page = null;
     this.userDataDir = null;
