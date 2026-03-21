@@ -9,6 +9,7 @@ import { launchVSCode, type LaunchConfig } from './vscode-launcher.js';
 import { trackSession, untrackSession, cleanupTempDir, installShutdownHooks } from './cleanup.js';
 import { ConsoleCollector } from './console-collector.js';
 import { ErrorCode, ToolError } from '../types/errors.js';
+import { withTimeout } from '../utils/timeout.js';
 import { logger } from '../utils/logger.js';
 
 const LAUNCH_TIMEOUT_MS = 30_000;
@@ -38,6 +39,12 @@ export class SessionManager {
    * Get the active Playwright Page. Throws if no session is active.
    */
   getPage(): Page {
+    if (this.stateMachine.state === SessionState.UNRESPONSIVE) {
+      throw new ToolError(
+        ErrorCode.SESSION_UNRESPONSIVE,
+        'VS Code instance is unresponsive (previous tool call timed out). Call vscode_close first, then vscode_launch to recover.',
+      );
+    }
     if (!this.page || !this.stateMachine.isReady) {
       throw new ToolError(
         ErrorCode.NO_SESSION,
@@ -135,6 +142,16 @@ export class SessionManager {
   }
 
   /**
+   * Mark the session as unresponsive (e.g. after a tool-call watchdog timeout).
+   * The LLM should call vscode_close and relaunch to recover.
+   */
+  markUnresponsive(): void {
+    if (this.stateMachine.isReady) {
+      this.stateMachine.transition(SessionState.UNRESPONSIVE);
+    }
+  }
+
+  /**
    * Gracefully close the running VS Code instance.
    */
   async close(): Promise<void> {
@@ -197,21 +214,4 @@ export class SessionManager {
     this.userDataDir = null;
     this.pid = 0;
   }
-}
-
-/** Run a promise with a timeout. Rejects with TIMEOUT error if exceeded. */
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new ToolError(
-        ErrorCode.TIMEOUT,
-        `${label} timed out after ${ms}ms. Try vscode_screenshot to see current state, or vscode_close and relaunch.`,
-      ));
-    }, ms);
-
-    promise.then(
-      (value) => { clearTimeout(timer); resolve(value); },
-      (error) => { clearTimeout(timer); reject(error); },
-    );
-  });
 }

@@ -6,7 +6,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SessionManager } from './session/session-manager.js';
 import { GifRecorder } from './session/gif-recorder.js';
 import { createTools } from './tools/index.js';
-import { ToolError } from './types/errors.js';
+import { ErrorCode, ToolError } from './types/errors.js';
+import { withTimeout } from './utils/timeout.js';
 import { logger } from './utils/logger.js';
 import type { ToolResult } from './types/tool-results.js';
 
@@ -40,7 +41,22 @@ export function createServer(): McpServer {
       },
       async (params: Record<string, unknown>) => {
         try {
-          const result = await tool.handler(session, params);
+          // If the tool accepts a user-specified timeout, extend the watchdog to accommodate it
+          const userTimeout = typeof params['timeout'] === 'number' ? params['timeout'] : 0;
+          const effectiveTimeout = Math.max(tool.timeoutMs, userTimeout + 5_000);
+
+          const result = await withTimeout(
+            tool.handler(session, params),
+            effectiveTimeout,
+            `${tool.name}`,
+          ).catch((error) => {
+            // On timeout, mark session UNRESPONSIVE so LLM knows to close+relaunch
+            if (error instanceof ToolError && error.code === ErrorCode.TIMEOUT && session.isReady) {
+              logger.warn('tool_timeout', { tool: tool.name, timeoutMs: effectiveTimeout });
+              session.markUnresponsive();
+            }
+            throw error;
+          });
 
           // Auto-capture GIF frame after successful tool calls.
           // Wrapped separately so a capture failure doesn't mask a successful tool result.

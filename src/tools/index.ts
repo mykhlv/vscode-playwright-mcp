@@ -30,6 +30,9 @@ export interface ToolDefinition {
   name: string;
   description: string;
   inputSchema: z.ZodObject<z.ZodRawShape>;
+  /** Watchdog timeout in ms. If the handler doesn't resolve within this time,
+   * the call fails with TIMEOUT error and session transitions to UNRESPONSIVE. */
+  timeoutMs: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handler: (session: SessionManager, params: any) => Promise<ToolResult>;
 }
@@ -66,12 +69,14 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         }).optional()
           .describe('Viewport size in logical pixels. Default: { width: 1280, height: 720 }.'),
       }),
+      timeoutMs: 35_000,
       handler: (session, params) => handleLaunch(session, params as LaunchParams),
     },
     {
       name: 'vscode_close',
       description: 'Close the running VS Code instance and clean up temporary files.',
       inputSchema: z.object({}),
+      timeoutMs: 15_000,
       handler: (session, params) => handleClose(session, params as CloseParams),
     },
     {
@@ -93,6 +98,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         quality: z.number().optional()
           .describe('JPEG quality 1-100. Default: 75. Ignored for PNG.'),
       }),
+      timeoutMs: 5_000,
       handler: (session, params) => handleScreenshot(session, params as ScreenshotParams),
     },
     {
@@ -109,6 +115,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         selector: z.string().optional()
           .describe('CSS selector to scope the snapshot. Default: "body" (full window).'),
       }),
+      timeoutMs: 10_000,
       handler: (session, params) => handleSnapshot(session, params as SnapshotParams),
     },
     {
@@ -131,6 +138,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         modifiers: z.array(z.enum(['Control', 'Shift', 'Alt', 'Meta'])).optional()
           .describe('Modifier keys to hold during click.'),
       }),
+      timeoutMs: 5_000,
       handler: (session, params) => handleClick(session, params as ClickParams),
     },
     {
@@ -145,6 +153,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         delay: z.number().optional()
           .describe('Delay between keystrokes in ms. Default: 0.'),
       }),
+      timeoutMs: 5_000,
       handler: (session, params) => handleType(session, params as TypeParams),
     },
     {
@@ -157,6 +166,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
       inputSchema: z.object({
         key: z.string().describe('Key or key combination. Examples: "Control+Shift+p", "Meta+b", "F2", "Escape".'),
       }),
+      timeoutMs: 5_000,
       handler: (session, params) => handlePressKey(session, params as PressKeyParams),
     },
     {
@@ -173,6 +183,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         line: z.number().optional().describe('Editor line number (1-based). Must be visible in viewport. Use instead of x/y for editor content.'),
         column: z.number().optional().describe('Editor column number (1-based). Used with line parameter.'),
       }),
+      timeoutMs: 5_000,
       handler: (session, params) => handleHover(session, params as HoverParams),
     },
     {
@@ -189,6 +200,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         amount: z.number().optional()
           .describe('Scroll units (each ~100px). Default: 3. Max: 100.'),
       }),
+      timeoutMs: 5_000,
       handler: (session, params) => handleScroll(session, params as ScrollParams),
     },
     {
@@ -203,6 +215,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         end_x: z.number().describe('End X coordinate (logical pixels).'),
         end_y: z.number().describe('End Y coordinate (logical pixels).'),
       }),
+      timeoutMs: 5_000,
       handler: (session, params) => handleDrag(session, params as DragParams),
     },
     {
@@ -224,6 +237,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
             'Does NOT work for commands that accept programmatic arguments — this is keyboard input, not an API call.',
           ),
       }),
+      timeoutMs: 10_000,
       handler: (session, params) => handleRunCommand(session, params as RunCommandParams),
     },
     {
@@ -248,6 +262,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         timeout: z.number().optional()
           .describe('Max wait time in ms for wait_for_diagnostics. Default: 5000.'),
       }),
+      timeoutMs: 15_000,
       handler: (session, params) => handleGetState(session, params as GetStateParams),
     },
     {
@@ -258,6 +273,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         'Returns the hover text (type info, documentation, error details) without needing a screenshot. ' +
         'If no tooltip is visible, returns a message suggesting to use vscode_hover first.',
       inputSchema: z.object({}),
+      timeoutMs: 5_000,
       handler: (session, params) => handleGetHover(session, params as GetHoverParams),
     },
     {
@@ -271,6 +287,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         path: z.string()
           .describe('File path to open. Can be absolute or workspace-relative. Example: "src/index.ts" or "/Users/me/project/src/index.ts".'),
       }),
+      timeoutMs: 10_000,
       handler: (session, params) => handleEnsureFile(session, params as EnsureFileParams),
     },
     {
@@ -291,6 +308,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
           '"manual": frames captured only when vscode_screenshot is called, giving full control over which moments appear in the GIF.',
         ),
       }),
+      timeoutMs: 5_000,
       handler: (_session, params) => handleGif(recorder, params as GifParams),
     },
     {
@@ -306,6 +324,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         timeout: z.number().optional()
           .describe('Max execution time in ms. Default: 30000.'),
       }),
+      timeoutMs: 35_000,
       handler: (session, params) => handleEvaluate(session, params as EvaluateParams),
     },
     {
@@ -326,6 +345,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         text: z.string().optional()
           .describe('Text content to wait for on the page. Cannot be combined with selector.'),
       }),
+      timeoutMs: 10_000,
       handler: (session, params) => handleWaitFor(session, params as WaitForParams),
     },
     {
@@ -343,6 +363,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         limit: z.number().optional()
           .describe('Max number of messages to return. Returns most recent. Default: all.'),
       }),
+      timeoutMs: 5_000,
       handler: (session, params) => handleConsole(session, params as ConsoleParams),
     },
   ];

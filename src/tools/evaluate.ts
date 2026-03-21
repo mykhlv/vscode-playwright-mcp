@@ -35,18 +35,19 @@ export async function handleEvaluate(
 
   let result: unknown;
   try {
-    result = await Promise.race([
-      page.evaluate(params.expression),
-      new Promise<never>((_resolve, reject) => {
-        setTimeout(
-          () => reject(new ToolError(
-            ErrorCode.TIMEOUT,
-            `Expression evaluation timed out after ${timeout}ms. Simplify the expression or increase timeout.`,
-          )),
-          timeout,
-        );
-      }),
-    ]);
+    result = await new Promise<unknown>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new ToolError(
+          ErrorCode.TIMEOUT,
+          `Expression evaluation timed out after ${timeout}ms. Simplify the expression or increase timeout.`,
+        )),
+        timeout,
+      );
+      page.evaluate(params.expression).then(
+        (value) => { clearTimeout(timer); resolve(value); },
+        (error) => { clearTimeout(timer); reject(error); },
+      );
+    });
   } catch (error) {
     if (error instanceof ToolError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
