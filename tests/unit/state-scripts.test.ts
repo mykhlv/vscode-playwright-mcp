@@ -40,6 +40,9 @@ describe('GET_STATE_SCRIPT', () => {
     expect(GET_STATE_SCRIPT).toContain('result.diagnosticsList');
     expect(GET_STATE_SCRIPT).toContain('result.visibleLines');
     expect(GET_STATE_SCRIPT).toContain('result.selection');
+    expect(GET_STATE_SCRIPT).toContain('result.peekWidget');
+    expect(GET_STATE_SCRIPT).toContain('result.renameWidget');
+    expect(GET_STATE_SCRIPT).toContain('result.completionDetails');
   });
 
   it('returns all visible lines for handler-side truncation', () => {
@@ -124,6 +127,56 @@ describe('GET_STATE_SCRIPT completions scraping', () => {
 
   it('stores completions on result object', () => {
     expect(GET_STATE_SCRIPT).toContain('result.completions');
+  });
+});
+
+describe('GET_STATE_SCRIPT peek widget scraping', () => {
+  it('queries peek widget selectors', () => {
+    expect(GET_STATE_SCRIPT).toContain('.zone-widget .peekview-widget');
+    expect(GET_STATE_SCRIPT).toContain('.peekview-title .filename');
+    expect(GET_STATE_SCRIPT).toContain('.peekview-title .dirname');
+    expect(GET_STATE_SCRIPT).toContain('.ref-tree .monaco-list-row');
+  });
+
+  it('extracts file header and reference items', () => {
+    expect(GET_STATE_SCRIPT).toContain('.reference-file');
+    expect(GET_STATE_SCRIPT).toContain('.referenceMatch');
+    expect(GET_STATE_SCRIPT).toContain('.line-number');
+  });
+
+  it('stores peek widget on result object', () => {
+    expect(GET_STATE_SCRIPT).toContain('result.peekWidget');
+  });
+});
+
+describe('GET_STATE_SCRIPT rename widget scraping', () => {
+  it('queries rename box selector', () => {
+    expect(GET_STATE_SCRIPT).toContain('.rename-box');
+  });
+
+  it('checks visibility via offsetParent with fixed-position fallback', () => {
+    expect(GET_STATE_SCRIPT).toContain('offsetParent');
+    expect(GET_STATE_SCRIPT).toContain('getComputedStyle');
+    expect(GET_STATE_SCRIPT).toContain('getBoundingClientRect');
+  });
+
+  it('stores rename widget on result object', () => {
+    expect(GET_STATE_SCRIPT).toContain('result.renameWidget');
+  });
+});
+
+describe('GET_STATE_SCRIPT completion details scraping', () => {
+  it('queries suggest details container', () => {
+    expect(GET_STATE_SCRIPT).toContain('.suggest-details-container');
+  });
+
+  it('extracts type and documentation', () => {
+    expect(GET_STATE_SCRIPT).toContain('.type');
+    expect(GET_STATE_SCRIPT).toContain('.docs');
+  });
+
+  it('stores completion details on result object', () => {
+    expect(GET_STATE_SCRIPT).toContain('result.completionDetails');
   });
 });
 

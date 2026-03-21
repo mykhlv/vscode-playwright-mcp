@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Added
+- **Ref-based interaction**: `vscode_snapshot` now returns `[ref=eN]` on interactive elements (buttons, tabs, tree items, etc.) — pass refs to `vscode_click(ref="e5")` or `vscode_hover(ref="e5")` for deterministic clicks without coordinate guessing
+- `vscode_click` and `vscode_hover` accept `ref` parameter (from snapshot) as preferred alternative to x/y coordinates
+- `vscode_snapshot` uses Playwright's AI snapshot mode internally, with fallback to legacy `ariaSnapshot()` when custom selector is specified
+- `vscode_get_state` now scrapes peek widget (references/definitions), rename input box, and completion details panel — reduces need for screenshots
 - `vscode_ensure_file` tool: reliably open and activate a specific file by path with verification and retry (replaces error-prone Quick Open workflow)
 - `vscode_get_state` now returns IntelliSense completions when the suggest widget is visible (label, kind, detail, selected state)
 - `vscode_gif` tool: record VS Code actions as animated GIF with start/stop/save actions

@@ -26,12 +26,8 @@ export interface ScreenshotParams {
   quality?: number;
 }
 
-export interface SnapshotParams {
-  max_depth?: number;
-  selector?: string;
-}
-
 export interface ClickParams {
+  ref?: string;
   x?: number;
   y?: number;
   line?: number;
@@ -51,6 +47,7 @@ export interface PressKeyParams {
 }
 
 export interface HoverParams {
+  ref?: string;
   x?: number;
   y?: number;
   line?: number;

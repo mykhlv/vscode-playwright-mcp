@@ -3,7 +3,7 @@
  */
 
 import type { SessionManager } from '../session/session-manager.js';
-import type { ScreenshotParams, SnapshotParams } from '../types/tool-params.js';
+import type { ScreenshotParams } from '../types/tool-params.js';
 import { type ToolResult, textResult, imageResult } from '../types/tool-results.js';
 import { validateQuality, validateRegion } from '../utils/validation.js';
 import { captureScreenshot } from '../utils/image.js';
@@ -35,26 +35,36 @@ export async function handleScreenshot(
   return imageResult(result.buffer, result.format, metadata);
 }
 
+/**
+ * AI snapshot result from Playwright's internal _snapshotForAI().
+ * Returns YAML with [ref=eN] on interactive elements and populates
+ * the aria-ref selector engine for subsequent locator queries.
+ */
+interface AISnapshotResult {
+  full: string;
+  incremental?: string;
+}
+
 export async function handleSnapshot(
   session: SessionManager,
-  params: SnapshotParams,
 ): Promise<ToolResult> {
-  logger.info('tool_call', { tool: 'vscode_snapshot', params });
+  logger.info('tool_call', { tool: 'vscode_snapshot' });
 
   const page = session.getPage();
-  const selector = params.selector ?? 'body';
-  const maxDepth = params.max_depth ?? 5;
 
-  const snapshot = await withRetry(
-    // maxDepth is supported at runtime but not yet in playwright-core types
-    () => page.locator(selector).ariaSnapshot({ maxDepth } as Record<string, unknown>),
+  // Use Playwright's AI snapshot which includes [ref=eN] on interactive elements.
+  // After this call, page.locator('aria-ref=eN') resolves to the DOM element.
+  const result: AISnapshotResult = await withRetry(
+    () => (page as unknown as { _snapshotForAI(opts: { timeout: number }): Promise<AISnapshotResult> })._snapshotForAI({ timeout: 10000 }),
     'snapshot',
   );
 
-  const lineCount = snapshot.split('\n').length;
-  logger.debug('snapshot_captured', { lineCount, maxDepth, selector });
+  const lineCount = result.full.split('\n').length;
+  logger.debug('snapshot_captured', { lineCount, mode: 'ai' });
 
   return textResult(
-    `Accessibility snapshot (${lineCount} lines, maxDepth=${maxDepth}):\n\n${snapshot}`,
+    `Accessibility snapshot (${lineCount} lines):\n` +
+    'Interactive elements have [ref=eN] — use ref with vscode_click or vscode_hover.\n\n' +
+    result.full,
   );
 }

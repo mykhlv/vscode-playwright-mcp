@@ -25,9 +25,9 @@ function createMockSession(options: MockPageOptions = { hasRows: true }): {
     },
     waitForTimeout: vi.fn(async () => {}),
     evaluate: vi.fn(async () => {
-      if (!options.hasRows) return false;
-      if (options.noMatchMessage) return false;
-      return true;
+      if (!options.hasRows) return { found: false };
+      if (options.noMatchMessage) return { found: false };
+      return { found: true, topMatch: 'Go to Line' };
     }),
   };
 
@@ -45,7 +45,7 @@ describe('handleRunCommand', () => {
     const result = await handleRunCommand(session, { command: 'Go to Line' });
 
     expect(result.type).toBe('text');
-    expect((result as { text: string }).text).toContain('Executed command "Go to Line"');
+    expect((result as { text: string }).text).toContain('Executed top Command Palette match "Go to Line"');
     expect(actions).toContain('type:Go to Line');
     expect(actions).toContain('press:Enter');
   });

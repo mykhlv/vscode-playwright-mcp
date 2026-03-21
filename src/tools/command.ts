@@ -43,21 +43,28 @@ export async function handleRunCommand(
   // Brief delay for filtering to settle
   await page.waitForTimeout(200);
 
-  // Check if Command Palette found a match before pressing Enter.
+  // Check if Command Palette found a match and read the top result label.
   // When no match exists, the palette shows "No matching commands" or
   // the list is empty — pressing Enter would dismiss the palette and
   // type the command text directly into the editor, silently corrupting the file.
-  const hasMatch = await page.evaluate(() => {
-    // Command Palette uses .quick-input-list with .monaco-list-row elements
-    const rows = document.querySelectorAll('.quick-input-list .monaco-list-row');
-    if (rows.length === 0) return false;
+  const matchResult = await page.evaluate(() => {
     // Also check for "No matching commands" message
     const noResults = document.querySelector('.quick-input-message');
-    if (noResults && noResults.textContent?.includes('No matching')) return false;
-    return true;
+    if (noResults && noResults.textContent?.includes('No matching')) {
+      return { found: false as const };
+    }
+    // Command Palette uses .quick-input-list with .monaco-list-row elements
+    const rows = document.querySelectorAll('.quick-input-list .monaco-list-row');
+    if (rows.length === 0) return { found: false as const };
+    // Read the label of the top match so we can report what was actually executed
+    const firstRow = rows[0];
+    const label = firstRow?.querySelector('.label-name')?.textContent?.trim()
+      ?? firstRow?.textContent?.trim()
+      ?? null;
+    return { found: true as const, topMatch: label };
   });
 
-  if (!hasMatch) {
+  if (!matchResult.found) {
     // Dismiss the palette without executing
     await page.keyboard.press('Escape');
     throw new ToolError(
@@ -82,7 +89,20 @@ export async function handleRunCommand(
   await page.waitForTimeout(COMMAND_SETTLE_MS);
 
   const inputDesc = params.input ? ` with input "${params.input}"` : '';
+  const topMatch = matchResult.topMatch;
+
+  // If we could read the top match label, report exactly what was executed.
+  // If the top match differs from the query, the caller knows immediately
+  // that the wrong command may have been selected — no extra round-trip needed.
+  if (topMatch) {
+    return textResult(
+      `Executed top Command Palette match "${topMatch}" (query: "${params.command}")${inputDesc}. ` +
+      'Verify with vscode_screenshot or vscode_get_state if the result is unclear.',
+    );
+  }
+
   return textResult(
-    `Executed command "${params.command}"${inputDesc} via Command Palette. Use vscode_screenshot or vscode_get_state to verify the result.`,
+    `Executed command "${params.command}"${inputDesc} via Command Palette. ` +
+    'Verify with vscode_screenshot or vscode_get_state if the result is unclear.',
   );
 }

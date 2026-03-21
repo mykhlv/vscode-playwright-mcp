@@ -13,6 +13,7 @@ import { logger } from '../utils/logger.js';
 import { resolveEditorPosition } from './state.js';
 
 interface PositionParams {
+  ref?: string;
   x?: number;
   y?: number;
   line?: number;
@@ -23,12 +24,54 @@ interface ResolvedPosition {
   x: number;
   y: number;
   description: string;
+  fromRef?: boolean;
 }
+
+/** Refs from _snapshotForAI follow the pattern eN (e.g. e1, e23, f1e5 for iframes). */
+const REF_PATTERN = /^(f\d+)?e\d+$/;
 
 async function resolvePosition(
   page: Page,
   params: PositionParams,
 ): Promise<ResolvedPosition> {
+  // Ref-based resolution: look up element from last vscode_snapshot via aria-ref selector
+  if (params.ref) {
+    const hasOther = params.x !== undefined || params.y !== undefined
+      || params.line !== undefined || params.column !== undefined;
+    if (hasOther) {
+      throw new ToolError(
+        ErrorCode.INVALID_INPUT,
+        'When using ref, do not provide x/y or line/column.',
+      );
+    }
+
+    if (!REF_PATTERN.test(params.ref)) {
+      throw new ToolError(
+        ErrorCode.INVALID_INPUT,
+        `Invalid ref format "${params.ref}". Refs look like "e1", "e23" — copy them from vscode_snapshot output.`,
+      );
+    }
+
+    const locator = page.locator(`aria-ref=${params.ref}`);
+    let box: { x: number; y: number; width: number; height: number } | null;
+    try {
+      box = await locator.boundingBox({ timeout: 3000 });
+    } catch {
+      box = null;
+    }
+    if (!box) {
+      throw new ToolError(
+        ErrorCode.INVALID_INPUT,
+        `Ref "${params.ref}" not found or not visible. ` +
+        'Take a new vscode_snapshot to get fresh refs — they expire after each snapshot call.',
+      );
+    }
+
+    const cx = Math.round(box.x + box.width / 2);
+    const cy = Math.round(box.y + box.height / 2);
+    return { x: cx, y: cy, description: `ref "${params.ref}" → (${cx}, ${cy})`, fromRef: true };
+  }
+
   // Check for partial parameter pairs before main logic
   if ((params.line !== undefined) !== (params.column !== undefined)) {
     throw new ToolError(ErrorCode.INVALID_INPUT, 'Both line and column must be provided together.');
@@ -43,13 +86,13 @@ async function resolvePosition(
   if (hasXY && hasLineCol) {
     throw new ToolError(
       ErrorCode.INVALID_INPUT,
-      'Provide either (x, y) OR (line, column), not both.',
+      'Provide either ref, (x, y), or (line, column) — not multiple.',
     );
   }
   if (!hasXY && !hasLineCol) {
     throw new ToolError(
       ErrorCode.INVALID_INPUT,
-      'Provide either (x, y) pixel coordinates or (line, column) editor position.',
+      'Provide ref (from vscode_snapshot), (x, y) pixel coordinates, or (line, column) editor position.',
     );
   }
 
@@ -78,9 +121,10 @@ export async function handleClick(
   const page = session.getPage();
   const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
 
-  const { x, y, description: posDesc } = await resolvePosition(page, params);
+  const { x, y, description: posDesc, fromRef } = await resolvePosition(page, params);
 
-  validateCoordinates(x, y, viewport);
+  // Ref-resolved coordinates come from boundingBox() — already valid, skip viewport check
+  if (!fromRef) validateCoordinates(x, y, viewport);
   validateClickCount(params.click_count);
 
   const button = params.button ?? 'left';
@@ -119,9 +163,9 @@ export async function handleHover(
   const page = session.getPage();
   const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
 
-  const { x, y, description: posDesc } = await resolvePosition(page, params);
+  const { x, y, description: posDesc, fromRef } = await resolvePosition(page, params);
 
-  validateCoordinates(x, y, viewport);
+  if (!fromRef) validateCoordinates(x, y, viewport);
 
   await withRetry(
     () => page.mouse.move(x, y),

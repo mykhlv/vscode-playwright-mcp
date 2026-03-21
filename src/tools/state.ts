@@ -175,6 +175,80 @@ export const GET_STATE_SCRIPT = `(() => {
     }
   }
 
+  // Peek widget (Go to References, Go to Definition peek)
+  const peekWidget = document.querySelector('.zone-widget .peekview-widget');
+  if (peekWidget) {
+    // Title: e.g. "3 references" or filename
+    const titleEl = peekWidget.querySelector('.peekview-title .filename');
+    const metaEl = peekWidget.querySelector('.peekview-title .dirname');
+    const peekTitle = titleEl ? titleEl.textContent.trim() : null;
+    const peekMeta = metaEl ? metaEl.textContent.trim() : null;
+
+    // Reference/definition list items from the tree
+    const treeRows = peekWidget.querySelectorAll('.ref-tree .monaco-list-row');
+    const peekItems = [];
+    for (const row of treeRows) {
+      // File header rows have .reference-file; reference rows have .reference
+      const fileHeader = row.querySelector('.reference-file');
+      if (fileHeader) {
+        const fileName = fileHeader.querySelector('.label-name');
+        const fileCount = fileHeader.querySelector('.count');
+        peekItems.push({
+          type: 'file',
+          label: fileName ? fileName.textContent.trim() : fileHeader.textContent.trim(),
+          count: fileCount ? fileCount.textContent.trim() : null,
+        });
+        continue;
+      }
+
+      // Individual reference rows show line content with highlighted match
+      const refContent = row.querySelector('.referenceMatch') || row.querySelector('.reference');
+      if (refContent || row.textContent.trim()) {
+        const lineEl = row.querySelector('.line-number');
+        peekItems.push({
+          type: 'reference',
+          text: row.textContent.trim(),
+          line: lineEl ? lineEl.textContent.trim() : null,
+          highlighted: row.classList.contains('focused') || row.classList.contains('selected'),
+        });
+      }
+    }
+    result.peekWidget = {
+      title: peekTitle,
+      meta: peekMeta,
+      items: peekItems,
+    };
+  }
+
+  // Rename input box (.rename-box is the container; the actual input is inside)
+  const renameBox = document.querySelector('.rename-box');
+  const renameBoxVisible = renameBox && (
+    renameBox.offsetParent !== null ||
+    (window.getComputedStyle(renameBox).position === 'fixed' && renameBox.getBoundingClientRect().width > 0)
+  );
+  if (renameBoxVisible) {
+    const renameInput = renameBox.querySelector('input') || renameBox.querySelector('.rename-input');
+    result.renameWidget = {
+      value: renameInput ? (renameInput.value || renameInput.textContent || '') : '',
+    };
+  }
+
+  // Suggest details (documentation popup shown alongside completions)
+  const detailsContainer = document.querySelector('.suggest-details-container');
+  if (detailsContainer && detailsContainer.offsetParent !== null) {
+    const detailsBody = detailsContainer.querySelector('.body');
+    if (detailsBody) {
+      // Get the type/signature from the header
+      const typeEl = detailsBody.querySelector('.type');
+      // Get the documentation text
+      const docsEl = detailsBody.querySelector('.docs');
+      result.completionDetails = {
+        type: typeEl ? typeEl.textContent.trim() : null,
+        documentation: docsEl ? docsEl.textContent.trim() : null,
+      };
+    }
+  }
+
   // Visible editor lines
   const viewLines = document.querySelectorAll('.view-lines .view-line');
   const lines = [];
@@ -259,13 +333,40 @@ interface CompletionItem {
   focused: boolean;
 }
 
+interface PeekItem {
+  type: 'file' | 'reference';
+  label?: string;
+  count?: string | null;
+  text?: string;
+  line?: string | null;
+  highlighted?: boolean;
+}
+
+interface PeekWidget {
+  title: string | null;
+  meta: string | null;
+  items: PeekItem[];
+}
+
+interface RenameWidget {
+  value: string;
+}
+
+interface CompletionDetails {
+  type: string | null;
+  documentation: string | null;
+}
+
 interface EditorState {
   activeFile: string | null;
   cursorPosition: string | null;
   diagnostics: string | null;
   diagnosticsList?: DiagnosticItem[];
   completions?: CompletionItem[];
+  completionDetails?: CompletionDetails;
   selection?: string;
+  peekWidget?: PeekWidget;
+  renameWidget?: RenameWidget;
   visibleLines: {
     all: string[];
     totalVisible: number;
@@ -380,6 +481,41 @@ export async function handleGetState(
       const focusStr = c.focused ? ' (selected)' : '';
       parts.push(`  ${prefix}${c.label}${detailStr}${focusStr}`);
     }
+  }
+
+  if (state.completionDetails) {
+    const cd = state.completionDetails;
+    if (cd.type || cd.documentation) {
+      parts.push('');
+      parts.push('Completion details:');
+      if (cd.type) parts.push(`  Type: ${cd.type}`);
+      if (cd.documentation) parts.push(`  Docs: ${cd.documentation}`);
+    }
+  }
+
+  if (state.peekWidget) {
+    const pw = state.peekWidget;
+    parts.push('');
+    const titleStr = pw.title ?? '(unknown)';
+    const metaStr = pw.meta ? ` — ${pw.meta}` : '';
+    parts.push(`Peek widget: ${titleStr}${metaStr}`);
+    if (pw.items.length > 0) {
+      for (const item of pw.items) {
+        if (item.type === 'file') {
+          const countStr = item.count ? ` (${item.count})` : '';
+          parts.push(`  [file] ${item.label}${countStr}`);
+        } else {
+          const lineStr = item.line ? `[${item.line}] ` : '';
+          const hlStr = item.highlighted ? ' (selected)' : '';
+          parts.push(`  ${lineStr}${item.text ?? ''}${hlStr}`);
+        }
+      }
+    }
+  }
+
+  if (state.renameWidget) {
+    parts.push('');
+    parts.push(`Rename widget: "${state.renameWidget.value}"`);
   }
 
   if (state.selection) {

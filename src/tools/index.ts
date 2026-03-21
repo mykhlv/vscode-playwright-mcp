@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { SessionManager } from '../session/session-manager.js';
 import type { ToolResult } from '../types/tool-results.js';
 import type {
-  LaunchParams, CloseParams, ScreenshotParams, SnapshotParams,
+  LaunchParams, CloseParams, ScreenshotParams,
   ClickParams, TypeParams, PressKeyParams,
   HoverParams, ScrollParams, DragParams,
   RunCommandParams, GetStateParams, GetHoverParams,
@@ -105,32 +105,29 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
       name: 'vscode_snapshot',
       description:
         'Get an accessibility tree snapshot of the VS Code UI. ' +
-        'Returns YAML-like text with roles, names, states, and keyboard shortcuts — but NO coordinates. ' +
-        'Buttons include keyboard shortcuts like "Toggle Primary Side Bar (Cmd+B)" — use these with vscode_press_key for reliable navigation. ' +
-        'Preferred workflow: vscode_snapshot -> find keyboard shortcut -> vscode_press_key. ' +
+        'Returns YAML-like text with roles, names, states, and keyboard shortcuts. ' +
+        'Interactive elements have [ref=eN] annotations — pass these refs to vscode_click or vscode_hover for deterministic clicks without coordinates. ' +
+        'Refs expire when the UI changes or on the next vscode_snapshot call. ' +
+        'Buttons include keyboard shortcuts like "Toggle Primary Side Bar (Cmd+B)" — use with vscode_press_key for navigation. ' +
         'NOTE: Monaco editor content appears as a single textbox — use vscode_screenshot to read code.',
-      inputSchema: z.object({
-        max_depth: z.number().optional()
-          .describe('Maximum tree depth. Default: 5. Higher = more detail but more tokens.'),
-        selector: z.string().optional()
-          .describe('CSS selector to scope the snapshot. Default: "body" (full window).'),
-      }),
+      inputSchema: z.object({}),
       timeoutMs: 10_000,
-      handler: (session, params) => handleSnapshot(session, params as SnapshotParams),
+      handler: (session) => handleSnapshot(session),
     },
     {
       name: 'vscode_click',
       description:
-        'Click at pixel coordinates OR editor line:column in the VS Code window. ' +
-        'Provide either (x, y) for pixel coordinates or (line, column) for editor positions. ' +
-        'Use vscode_screenshot first to identify the target coordinates visually. ' +
-        'For editor content, line:column avoids coordinate guessing — the line must be visible in the viewport. ' +
+        'Click on a UI element or editor position. Three modes (pick one): ' +
+        '1. ref — from vscode_snapshot [ref=eN], deterministic, preferred for buttons/tabs/tree items. ' +
+        '2. line, column — for editor content (line must be visible in viewport). ' +
+        '3. x, y — pixel coordinates from vscode_screenshot, fallback only. ' +
         'Supports left/right/middle click, double-click (click_count=2), and modifier keys.',
       inputSchema: z.object({
-        x: z.number().optional().describe('X coordinate (logical pixels). Required if line/column not provided.'),
-        y: z.number().optional().describe('Y coordinate (logical pixels). Required if line/column not provided.'),
-        line: z.number().optional().describe('Editor line number (1-based). Must be visible in viewport. Use instead of x/y for editor content.'),
-        column: z.number().optional().describe('Editor column number (1-based). Used with line parameter.'),
+        ref: z.string().optional().describe('Element ref from vscode_snapshot [ref=eN]. Preferred — no coordinate guessing needed.'),
+        x: z.number().optional().describe('X coordinate (logical pixels). Fallback when ref is not available.'),
+        y: z.number().optional().describe('Y coordinate (logical pixels). Fallback when ref is not available.'),
+        line: z.number().optional().describe('Editor line number (1-based). Must be visible in viewport.'),
+        column: z.number().optional().describe('Editor column number (1-based). Used with line.'),
         button: z.enum(['left', 'right', 'middle']).optional()
           .describe('Mouse button. Default: left.'),
         click_count: z.number().optional()
@@ -174,16 +171,16 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
     {
       name: 'vscode_hover',
       description:
-        'Move the mouse to pixel coordinates OR editor line:column without clicking. ' +
-        'Use this to trigger hover effects like tooltips, hover documentation, error details, and quick info popups. ' +
-        'Provide either (x, y) for pixel coordinates or (line, column) for editor positions. ' +
-        'For editor content, line:column avoids coordinate guessing — the line must be visible in the viewport. ' +
-        'Take a screenshot after hovering to see the tooltip content.',
+        'Move the mouse to a UI element or editor position without clicking. ' +
+        'Triggers hover effects: tooltips, documentation, error details, quick info popups. ' +
+        'Three modes (pick one): ref (from vscode_snapshot), line+column (editor), x+y (pixel fallback). ' +
+        'After hovering, use vscode_get_hover to read tooltip text, or vscode_screenshot to see it visually.',
       inputSchema: z.object({
-        x: z.number().optional().describe('X coordinate (logical pixels). Required if line/column not provided.'),
-        y: z.number().optional().describe('Y coordinate (logical pixels). Required if line/column not provided.'),
-        line: z.number().optional().describe('Editor line number (1-based). Must be visible in viewport. Use instead of x/y for editor content.'),
-        column: z.number().optional().describe('Editor column number (1-based). Used with line parameter.'),
+        ref: z.string().optional().describe('Element ref from vscode_snapshot [ref=eN]. Preferred — no coordinate guessing needed.'),
+        x: z.number().optional().describe('X coordinate (logical pixels). Fallback when ref is not available.'),
+        y: z.number().optional().describe('Y coordinate (logical pixels). Fallback when ref is not available.'),
+        line: z.number().optional().describe('Editor line number (1-based). Must be visible in viewport.'),
+        column: z.number().optional().describe('Editor column number (1-based). Used with line.'),
       }),
       timeoutMs: 5_000,
       handler: (session, params) => handleHover(session, params as HoverParams),
@@ -246,10 +243,10 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
       name: 'vscode_get_state',
       description:
         'Read current editor state via DOM scraping — no screenshot needed. ' +
-        'Returns: active file name, cursor position (line/column), diagnostics count (errors/warnings), ' +
-        'selection info, and visible editor lines with line numbers. ' +
-        'If the Problems panel is open (use vscode_run_command with "workbench.actions.view.problems" to open it), ' +
-        'also returns detailed diagnostics with severity, message, line number, and source. ' +
+        'Returns: active file name, cursor position, diagnostics, selection, visible lines, ' +
+        'IntelliSense completions (when suggest widget is open), peek widget results (references/definitions), ' +
+        'rename widget value, and completion details (type signature + docs). ' +
+        'If the Problems panel is open, returns detailed diagnostics with severity, message, line, and source. ' +
         'Much faster and cheaper than a screenshot for getting editor metadata. ' +
         'Use vscode_screenshot when you need to see visual layout or precise code content.',
       inputSchema: z.object({
