@@ -63,7 +63,7 @@ export async function handleGif(
         );
       }
 
-      const result = await recorder.save(params.filename, params.delay, params.progress_bar);
+      const result = await recorder.save(resolved, params.delay, params.progress_bar);
 
       return textResult(
         `GIF saved: ${result.path}\n` +
