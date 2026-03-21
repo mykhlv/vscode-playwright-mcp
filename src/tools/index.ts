@@ -162,9 +162,11 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         'Press a keyboard shortcut or key combination. ' +
         'Format: "Control+Shift+p", "Meta+b", "F2", "Escape", "Enter". ' +
         'Use Meta for Cmd on macOS. Common aliases: Ctrl=Control, Cmd=Meta, Esc=Escape. ' +
+        'Note: some Meta+key combos (e.g. Meta+End) may be intercepted by Electron/macOS; ' +
+        'use Meta+ArrowDown instead of Meta+End for go-to-end-of-file. ' +
         'Best workflow: use vscode_snapshot to discover shortcuts in button names, then press them directly.',
       inputSchema: z.object({
-        key: z.string().describe('Key or key combination. Examples: "Control+Shift+p", "Meta+b", "F2", "Escape".'),
+        key: z.string().describe('Key or key combination. Examples: "Control+Shift+p", "Meta+b", "F2", "Escape". Arrow keys are auto-normalized: Left→ArrowLeft, Up→ArrowUp, etc.'),
       }),
       timeoutMs: 5_000,
       handler: (session, params) => handlePressKey(session, params as PressKeyParams),
@@ -256,7 +258,7 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
         diagnostics_severity: z.enum(['error', 'warning', 'info']).optional()
           .describe('Filter diagnostics by minimum severity: "error" shows only errors, "warning" shows errors and warnings, "info" shows all.'),
         visible_lines: z.union([z.literal('all'), z.literal('none'), z.number()]).optional()
-          .describe('Control visible lines output: "all" returns all visible lines, "none" omits lines, a number returns up to N lines. Default: 15.'),
+          .describe('Control visible lines output: "all" returns all visible lines, "none" omits lines (pass the string none, not quoted), a number returns up to N lines. Default: 15.'),
         wait_for_diagnostics: z.boolean().optional()
           .describe('If true, poll until diagnostics appear (or timeout). Useful after opening a file when LSP needs time to index.'),
         timeout: z.number().optional()

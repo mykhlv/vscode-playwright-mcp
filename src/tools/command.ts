@@ -9,6 +9,7 @@
 import type { SessionManager } from '../session/session-manager.js';
 import type { RunCommandParams } from '../types/tool-params.js';
 import { type ToolResult, textResult } from '../types/tool-results.js';
+import { ErrorCode, ToolError } from '../types/errors.js';
 import { validateNonEmptyString } from '../utils/validation.js';
 import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
@@ -41,6 +42,31 @@ export async function handleRunCommand(
 
   // Brief delay for filtering to settle
   await page.waitForTimeout(200);
+
+  // Check if Command Palette found a match before pressing Enter.
+  // When no match exists, the palette shows "No matching commands" or
+  // the list is empty — pressing Enter would dismiss the palette and
+  // type the command text directly into the editor, silently corrupting the file.
+  const hasMatch = await page.evaluate(() => {
+    // Command Palette uses .quick-input-list with .monaco-list-row elements
+    const rows = document.querySelectorAll('.quick-input-list .monaco-list-row');
+    if (rows.length === 0) return false;
+    // Also check for "No matching commands" message
+    const noResults = document.querySelector('.quick-input-message');
+    if (noResults && noResults.textContent?.includes('No matching')) return false;
+    return true;
+  });
+
+  if (!hasMatch) {
+    // Dismiss the palette without executing
+    await page.keyboard.press('Escape');
+    throw new ToolError(
+      ErrorCode.COMMAND_NOT_FOUND,
+      `Command not found: "${params.command}". No matching command in Command Palette. ` +
+      'Use the exact command label (e.g. "Go to Line" not "goToLine"). ' +
+      'Use vscode_snapshot on the Command Palette to see available commands.',
+    );
+  }
 
   // Press Enter to execute the top match
   await page.keyboard.press('Enter');

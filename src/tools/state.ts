@@ -208,26 +208,36 @@ export const GET_STATE_SCRIPT = `(() => {
 
 /** DOM scraping script for hover tooltip content. Runs inside the VS Code renderer. */
 export const GET_HOVER_SCRIPT = `(() => {
+  function isVisible(el) {
+    if (!el) return false;
+    // Walk up to the hover widget container and check its display/visibility
+    let node = el;
+    while (node && node !== document.body) {
+      const style = window.getComputedStyle(node);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+        return false;
+      }
+      node = node.parentElement;
+    }
+    return true;
+  }
+
   // Try the main Monaco hover content container
   const hoverContent = document.querySelector('.monaco-hover-content');
-  if (hoverContent) {
+  if (hoverContent && isVisible(hoverContent)) {
     return { found: true, text: hoverContent.textContent.trim() };
   }
 
   // Try alternate hover containers
   const hoverContents = document.querySelector('.hover-contents');
-  if (hoverContents) {
+  if (hoverContents && isVisible(hoverContents)) {
     return { found: true, text: hoverContents.textContent.trim() };
   }
 
   // Try the hover widget itself
   const hoverWidget = document.querySelector('.monaco-hover');
-  if (hoverWidget) {
-    const visible = hoverWidget.style.display !== 'none' &&
-                    hoverWidget.style.visibility !== 'hidden';
-    if (visible) {
-      return { found: true, text: hoverWidget.textContent.trim() };
-    }
+  if (hoverWidget && isVisible(hoverWidget)) {
+    return { found: true, text: hoverWidget.textContent.trim() };
   }
 
   return { found: false, text: null };
