@@ -106,7 +106,7 @@ describe('validateKeyCombo', () => {
 
   it('allows punctuation keys', () => {
     expect(validateKeyCombo('Control+[')).toBeNull();
-    expect(validateKeyCombo("'")).toBeNull();
+    expect(validateKeyCombo('\'')).toBeNull();
   });
 });
 

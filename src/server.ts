@@ -69,7 +69,7 @@ export function createServer(): McpServer {
     );
   }
 
-  logger.info('server_created', { toolCount: tools.length, tools: tools.map(t => t.name) });
+  logger.info('server_created', { toolCount: tools.length, tools: tools.map((t) => t.name) });
 
   return server;
 }
@@ -98,7 +98,7 @@ function toMcpResponse(result: ToolResult) {
   }
 
   const _exhaustive: never = result;
-  throw new Error(`Unknown result type: ${(_exhaustive as any).type}`);
+  throw new Error(`Unknown result type: ${(_exhaustive as { type: string }).type}`);
 }
 
 /**

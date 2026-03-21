@@ -6,6 +6,14 @@
 import { writeFile } from 'node:fs/promises';
 import { resolve, isAbsolute } from 'node:path';
 import type { Page } from 'playwright-core';
+
+/** Minimal type for the gifenc GIFEncoder instance (no upstream types available). */
+interface GifEncoderInstance {
+  writeFrame(indexed: Uint8Array, width: number, height: number, opts: { palette: number[][]; delay: number }): void;
+  finish(): void;
+  bytes(): Uint8Array;
+}
+
 /** Lazy-load gifenc to handle CJS/ESM interop differences across runtimes */
 async function loadGifenc() {
   // @ts-expect-error -- gifenc has no type declarations
@@ -13,7 +21,7 @@ async function loadGifenc() {
   // CJS interop: might be mod.default.GIFEncoder or mod.GIFEncoder
   const api = mod.default?.GIFEncoder ? mod.default : mod;
   return api as {
-    GIFEncoder: () => any;
+    GIFEncoder: () => GifEncoderInstance;
     quantize: (rgba: Uint8Array, maxColors: number) => number[][];
     applyPalette: (rgba: Uint8Array, palette: number[][]) => Uint8Array;
   };

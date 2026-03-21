@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import type { Page } from 'playwright-core';
 import { GifRecorder } from '../../src/session/gif-recorder.js';
 import { PNG } from 'pngjs';
 
@@ -47,7 +48,7 @@ describe('GifRecorder', () => {
     // Simulate capturing a frame by calling captureFrame with a mock page
     const mockPage = {
       screenshot: async () => createPngBuffer(1280, 720),
-    } as any;
+    } as unknown as Page;
 
     await recorder.captureFrame(mockPage);
     expect(recorder.frameCount).toBe(1);
@@ -60,7 +61,7 @@ describe('GifRecorder', () => {
   it('captures frames when recording', async () => {
     const mockPage = {
       screenshot: async () => createPngBuffer(1280, 720),
-    } as any;
+    } as unknown as Page;
 
     recorder.startRecording();
     await recorder.captureFrame(mockPage);
@@ -71,7 +72,7 @@ describe('GifRecorder', () => {
   it('does not capture frames when not recording', async () => {
     const mockPage = {
       screenshot: async () => createPngBuffer(1280, 720),
-    } as any;
+    } as unknown as Page;
 
     await recorder.captureFrame(mockPage);
     expect(recorder.frameCount).toBe(0);
@@ -80,7 +81,7 @@ describe('GifRecorder', () => {
   it('handles screenshot failures gracefully', async () => {
     const mockPage = {
       screenshot: async () => { throw new Error('page crashed'); },
-    } as any;
+    } as unknown as Page;
 
     recorder.startRecording();
     // Should not throw
@@ -98,7 +99,7 @@ describe('GifRecorder', () => {
 
     const mockPage = {
       screenshot: async () => createPngBuffer(1280, 720, 0, 128, 255),
-    } as any;
+    } as unknown as Page;
 
     recorder.startRecording();
     await recorder.captureFrame(mockPage);
@@ -152,7 +153,7 @@ describe('GifRecorder', () => {
   it('stops recording when reaching max frame limit', async () => {
     const mockPage = {
       screenshot: async () => createPngBuffer(4, 4), // tiny PNG for speed
-    } as any;
+    } as unknown as Page;
 
     recorder.startRecording();
 

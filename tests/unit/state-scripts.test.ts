@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import type { Page } from 'playwright-core';
 import { GET_STATE_SCRIPT, GET_HOVER_SCRIPT, resolveEditorPosition } from '../../src/tools/state.js';
 
 // We can't run page.evaluate() in unit tests, but we can verify
@@ -87,7 +88,7 @@ describe('resolveEditorPosition', () => {
     const mockPage = {
       evaluate: async () => ({ x: 0, y: 0, found: false }),
     };
-    await expect(resolveEditorPosition(mockPage as any, 99, 1)).rejects.toThrow(
+    await expect(resolveEditorPosition(mockPage as unknown as Page, 99, 1)).rejects.toThrow(
       /Could not resolve editor position/,
     );
   });
@@ -96,7 +97,7 @@ describe('resolveEditorPosition', () => {
     const mockPage = {
       evaluate: async () => ({ x: 150, y: 300, found: true }),
     };
-    const result = await resolveEditorPosition(mockPage as any, 10, 5);
+    const result = await resolveEditorPosition(mockPage as unknown as Page, 10, 5);
     expect(result).toEqual({ x: 150, y: 300 });
   });
 });
@@ -110,7 +111,7 @@ describe('GET_STATE_SCRIPT completions scraping', () => {
   it('checks suggest widget visibility', () => {
     expect(GET_STATE_SCRIPT).toContain('monaco-visible-content-widget');
     expect(GET_STATE_SCRIPT).toContain('classList.contains');
-    expect(GET_STATE_SCRIPT).toContain("'hidden'");
+    expect(GET_STATE_SCRIPT).toContain('\'hidden\'');
   });
 
   it('extracts completion item properties', () => {

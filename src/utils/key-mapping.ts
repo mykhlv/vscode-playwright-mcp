@@ -23,7 +23,7 @@ const VALID_KEYS = new Set([
   // Digits
   ...'0123456789'.split(''),
   // Punctuation Playwright accepts
-  '`', '-', '=', '[', ']', '\\', ';', "'", ',', '.', '/',
+  '`', '-', '=', '[', ']', '\\', ';', '\'', ',', '.', '/',
 ]);
 
 /** Common aliases people might use */
@@ -87,7 +87,7 @@ function normalizeKeyPart(part: string): [string, boolean] {
  */
 export function normalizeKeyCombo(combo: string): string {
   const parts = combo.split('+');
-  const normalized = parts.map(p => normalizeKeyPart(p)[0]);
+  const normalized = parts.map((p) => normalizeKeyPart(p)[0]);
   return normalized.join('+');
 }
 
@@ -101,7 +101,7 @@ export function validateKeyCombo(combo: string): string | null {
   }
 
   const parts = combo.split('+');
-  if (parts.some(p => p.trim().length === 0)) {
+  if (parts.some((p) => p.trim().length === 0)) {
     return `Invalid key combo "${combo}": contains empty parts. Use format like "Control+Shift+p".`;
   }
 
@@ -118,7 +118,7 @@ export function validateKeyCombo(combo: string): string | null {
   }
 
   if (unrecognized.length > 0) {
-    return `Unrecognized key(s): ${unrecognized.map(k => `"${k}"`).join(', ')}. ` +
+    return `Unrecognized key(s): ${unrecognized.map((k) => `"${k}"`).join(', ')}. ` +
       'Valid keys: letters (a-z), digits (0-9), ' +
       'F1-F12, Enter, Tab, Space, Escape, Backspace, Delete, ' +
       'ArrowUp/Down/Left/Right, Home, End, PageUp, PageDown, ' +
@@ -127,9 +127,9 @@ export function validateKeyCombo(combo: string): string | null {
   }
 
   // Check that combo has at most one non-modifier key
-  const nonModifiers = normalizedParts.filter(p => !MODIFIER_KEYS.has(p.normalized));
+  const nonModifiers = normalizedParts.filter((p) => !MODIFIER_KEYS.has(p.normalized));
   if (nonModifiers.length > 1) {
-    return `Key combo "${combo}" has multiple non-modifier keys: ${nonModifiers.map(p => `"${p.original}"`).join(', ')}. ` +
+    return `Key combo "${combo}" has multiple non-modifier keys: ${nonModifiers.map((p) => `"${p.original}"`).join(', ')}. ` +
       'A key combo should have modifiers (Control, Shift, Alt, Meta) plus one action key.';
   }
 

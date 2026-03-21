@@ -62,18 +62,18 @@ describe('handleEnsureFile', () => {
     };
     const mockSession = {
       getPage: () => mockPage,
-    };
+    } as unknown as Parameters<typeof handleEnsureFile>[0];
 
-    const result = await handleEnsureFile(mockSession as any, { path: 'src/index.ts' });
+    const result = await handleEnsureFile(mockSession, { path: 'src/index.ts' });
     expect(result.type).toBe('text');
-    expect((result as any).text).toContain('already active');
+    expect((result as { type: 'text'; text: string }).text).toContain('already active');
   });
 
   it('throws on empty path', async () => {
     const mockSession = {
       getPage: () => ({}),
-    };
-    await expect(handleEnsureFile(mockSession as any, { path: '' })).rejects.toThrow(
+    } as unknown as Parameters<typeof handleEnsureFile>[0];
+    await expect(handleEnsureFile(mockSession, { path: '' })).rejects.toThrow(
       /non-empty string/,
     );
   });

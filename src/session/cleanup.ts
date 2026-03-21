@@ -19,7 +19,7 @@ export function trackSession(pid: number, userDataDir: string): void {
 }
 
 export function untrackSession(pid: number): void {
-  const idx = trackedSessions.findIndex(s => s.pid === pid);
+  const idx = trackedSessions.findIndex((s) => s.pid === pid);
   if (idx !== -1) {
     trackedSessions.splice(idx, 1);
   }

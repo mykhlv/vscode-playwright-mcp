@@ -13,9 +13,7 @@ export interface LaunchParams {
   viewport?: { width: number; height: number };
 }
 
-export interface CloseParams {
-  // No parameters
-}
+export type CloseParams = Record<string, never>;
 
 export interface ScreenshotParams {
   region?: {
@@ -86,9 +84,7 @@ export interface GetStateParams {
   timeout?: number;
 }
 
-export interface GetHoverParams {
-  // No parameters
-}
+export type GetHoverParams = Record<string, never>;
 
 export interface EnsureFileParams {
   path: string;

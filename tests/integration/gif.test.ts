@@ -12,7 +12,6 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { SessionManager } from '../../src/session/session-manager.js';
 import { GifRecorder } from '../../src/session/gif-recorder.js';
 import { handleGif } from '../../src/tools/gif.js';
-import { handleScreenshot } from '../../src/tools/vision.js';
 import {
   isVSCodeAvailable,
   createSession,
