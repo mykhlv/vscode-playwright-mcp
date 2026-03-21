@@ -12,9 +12,10 @@ import type {
   RunCommandParams, GetStateParams, GetHoverParams,
   EnsureFileParams, GifParams,
   EvaluateParams, WaitForParams, ConsoleParams,
+  ResizeParams, ZoomParams, FindElementParams,
 } from '../types/tool-params.js';
 import { handleLaunch, handleClose } from './launch.js';
-import { handleScreenshot, handleSnapshot } from './vision.js';
+import { handleScreenshot, handleSnapshot, handleResize, handleZoom, handleFindElement } from './vision.js';
 import { handleType, handlePressKey } from './keyboard.js';
 import { handleClick, handleHover, handleScroll, handleDrag } from './mouse.js';
 import { handleRunCommand } from './command.js';
@@ -364,6 +365,59 @@ export function createTools(recorder: GifRecorder): ToolDefinition[] {
       }),
       timeoutMs: 5_000,
       handler: (session, params) => handleConsole(session, params as ConsoleParams),
+    },
+    {
+      name: 'vscode_resize',
+      description:
+        'Resize the VS Code window viewport on the fly. ' +
+        'Use to test responsive layouts, sidebar behavior, or panel sizes at different window dimensions. ' +
+        'Min: 200x200, Max: 3840x2160.',
+      inputSchema: z.object({
+        width: z.number().describe('New viewport width in logical pixels.'),
+        height: z.number().describe('New viewport height in logical pixels.'),
+      }),
+      timeoutMs: 5_000,
+      handler: (session, params) => handleResize(session, params as ResizeParams),
+    },
+    {
+      name: 'vscode_zoom',
+      description:
+        'Capture a cropped screenshot of a specific region for closer inspection. ' +
+        'Use when the full screenshot is too large to read small UI details like icons, status bar items, or Monaco editor text. ' +
+        'Coordinates in the cropped image are relative — add the region origin (x, y) to get window coordinates for clicks. ' +
+        'Prefer this over full vscode_screenshot when you need to inspect a specific area.',
+      inputSchema: z.object({
+        x: z.number().describe('Left edge of the crop region (logical pixels).'),
+        y: z.number().describe('Top edge of the crop region (logical pixels).'),
+        width: z.number().describe('Width of the crop region (logical pixels).'),
+        height: z.number().describe('Height of the crop region (logical pixels).'),
+        format: z.enum(['jpeg', 'png']).optional()
+          .describe('Image format. Default: jpeg.'),
+        quality: z.number().optional()
+          .describe('JPEG quality 1-100. Default: 75. Ignored for PNG.'),
+      }),
+      timeoutMs: 5_000,
+      handler: (session, params) => handleZoom(session, params as ZoomParams),
+    },
+    {
+      name: 'vscode_find_element',
+      description:
+        'Search the accessibility tree for elements matching a role and/or name filter. ' +
+        'Returns matching lines with [ref=eN] annotations — use refs with vscode_click or vscode_hover. ' +
+        'Faster and more focused than vscode_snapshot when you know what you\'re looking for. ' +
+        'Takes a fresh snapshot internally — invalidates refs from any previous vscode_snapshot call. ' +
+        'Role filter is case-insensitive exact match; name filter is case-insensitive partial match against quoted text. ' +
+        'Examples: role="button" name="Save", role="tab", name="index.ts".',
+      inputSchema: z.object({
+        role: z.string().optional()
+          .describe('ARIA role to filter by (case-insensitive, exact match). Examples: "button", "tab", "textbox", "treeitem", "menuitem".'),
+        name: z.string().optional()
+          .describe('Text/name to filter by (case-insensitive, partial match). Matches against quoted text in the snapshot line (element name/label). Does not match refs or attributes.'),
+        max_results: z.number().optional()
+          .describe('Maximum number of results to return. Default: 20.'),
+      }),
+      timeoutMs: 10_000,
+      handler: (session, params) => handleFindElement(session, params as FindElementParams),
     },
   ];
 }

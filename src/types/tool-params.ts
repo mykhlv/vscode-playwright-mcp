@@ -112,3 +112,23 @@ export interface ConsoleParams {
   level?: 'log' | 'warn' | 'error' | 'info' | 'all';
   limit?: number;
 }
+
+export interface ResizeParams {
+  width: number;
+  height: number;
+}
+
+export interface ZoomParams {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  format?: 'jpeg' | 'png';
+  quality?: number;
+}
+
+export interface FindElementParams {
+  role?: string;
+  name?: string;
+  max_results?: number;
+}

@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- `vscode_resize` tool: resize the VS Code viewport on the fly (min 200x200, max 3840x2160) for responsive layout testing
+- `vscode_zoom` tool: capture a cropped screenshot of a specific region for closer inspection of small UI details, Monaco editor text, or status bar items
+- `vscode_find_element` tool: search the accessibility tree by role and/or name with case-insensitive partial matching — returns matching elements with `[ref=eN]` for immediate use with `vscode_click` or `vscode_hover`
 - **Ref-based interaction**: `vscode_snapshot` now returns `[ref=eN]` on interactive elements (buttons, tabs, tree items, etc.) — pass refs to `vscode_click(ref="e5")` or `vscode_hover(ref="e5")` for deterministic clicks without coordinate guessing
 - `vscode_click` and `vscode_hover` accept `ref` parameter (from snapshot) as preferred alternative to x/y coordinates
 - `vscode_snapshot` uses Playwright's AI snapshot mode internally, with fallback to legacy `ariaSnapshot()` when custom selector is specified

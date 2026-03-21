@@ -86,6 +86,15 @@ export function validateClickCount(count: number | undefined): void {
   }
 }
 
+export function validateViewportSize(width: number, height: number): void {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 200 || height < 200 || width > 3840 || height > 2160) {
+    throw new ToolError(
+      ErrorCode.INVALID_INPUT,
+      `Viewport size must be integers between 200x200 and 3840x2160. Got ${width}x${height}.`,
+    );
+  }
+}
+
 export function validateScrollAmount(amount: number | undefined): void {
   if (amount !== undefined && (!Number.isFinite(amount) || amount <= 0 || amount > 100)) {
     throw new ToolError(
