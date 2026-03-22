@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "bin": {
+    "vscode-playwright-mcp": "dist/index.js"
+  },
   "engines": {
     "node": ">=22.0.0"
   },
@@ -15,12 +18,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "spike:1": "tsx spikes/01-launch-screenshot.ts",
-    "spike:2": "tsx spikes/02-a11y-tree.ts",
-    "spike:3": "tsx spikes/03-interaction-loop.ts",
-    "spike:4": "tsx spikes/04-evaluate-vscode-api.ts",
-    "spike:5": "tsx spikes/05-snapshot-tooltips.ts"
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",

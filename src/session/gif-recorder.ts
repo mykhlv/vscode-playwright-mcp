@@ -6,6 +6,7 @@
 import { writeFile } from 'node:fs/promises';
 import { resolve, isAbsolute } from 'node:path';
 import type { Page } from 'playwright-core';
+import { ErrorCode, ToolError } from '../types/errors.js';
 
 /** Minimal type for the gifenc GIFEncoder instance (no upstream types available). */
 interface GifEncoderInstance {
@@ -187,66 +188,78 @@ export class GifRecorder {
     }
 
     if (this.frames.length === 0) {
-      throw new Error('No frames captured. Start recording and perform some actions first.');
+      throw new ToolError(
+        ErrorCode.GIF_ERROR,
+        'No frames captured. Start recording with vscode_gif action "start", perform some actions, then save.',
+      );
     }
 
     const absolutePath = isAbsolute(filename) ? filename : resolve(process.cwd(), filename);
 
-    const { GIFEncoder, quantize, applyPalette } = await loadGifenc();
-    const encoder = GIFEncoder();
+    let buffer: Buffer;
+    try {
+      const { GIFEncoder, quantize, applyPalette } = await loadGifenc();
+      const encoder = GIFEncoder();
 
-    for (let i = 0; i < this.frames.length; i++) {
-      const frame = this.frames[i]!;
-      const parsed = PNG.sync.read(frame.png);
+      for (let i = 0; i < this.frames.length; i++) {
+        const frame = this.frames[i]!;
+        const parsed = PNG.sync.read(frame.png);
 
-      // Force ALL frames to GIF_WIDTH x GIF_HEIGHT to prevent corrupt GIFs
-      // from mixed dimensions. Nearest-neighbor is fine for GIF quality.
-      let rgba: Uint8Array;
-      const frameWidth = GIF_WIDTH;
-      const frameHeight = GIF_HEIGHT;
+        // Force ALL frames to GIF_WIDTH x GIF_HEIGHT to prevent corrupt GIFs
+        // from mixed dimensions. Nearest-neighbor is fine for GIF quality.
+        let rgba: Uint8Array;
+        const frameWidth = GIF_WIDTH;
+        const frameHeight = GIF_HEIGHT;
 
-      if (parsed.width !== GIF_WIDTH || parsed.height !== GIF_HEIGHT) {
-        rgba = scaleRGBA(
-          new Uint8Array(parsed.data.buffer, parsed.data.byteOffset, parsed.data.byteLength),
-          parsed.width,
-          parsed.height,
-          GIF_WIDTH,
-          GIF_HEIGHT,
-        );
-      } else {
-        rgba = new Uint8Array(parsed.data.buffer, parsed.data.byteOffset, parsed.data.byteLength);
+        if (parsed.width !== GIF_WIDTH || parsed.height !== GIF_HEIGHT) {
+          rgba = scaleRGBA(
+            new Uint8Array(parsed.data.buffer, parsed.data.byteOffset, parsed.data.byteLength),
+            parsed.width,
+            parsed.height,
+            GIF_WIDTH,
+            GIF_HEIGHT,
+          );
+        } else {
+          rgba = new Uint8Array(parsed.data.buffer, parsed.data.byteOffset, parsed.data.byteLength);
+        }
+
+        // Use explicit delay or calculate from timestamps
+        let delay: number;
+        if (frameDelay != null) {
+          delay = Math.max(MIN_FRAME_DELAY_MS, Math.min(MAX_FRAME_DELAY_MS, frameDelay));
+        } else if (i < this.frames.length - 1) {
+          delay = this.frames[i + 1]!.timestamp - frame.timestamp;
+          delay = Math.max(MIN_FRAME_DELAY_MS, Math.min(MAX_FRAME_DELAY_MS, delay));
+        } else {
+          // Last frame: hold for 1 second
+          delay = 1000;
+        }
+
+        if (progressBar) {
+          drawProgressBar(rgba, frameWidth, frameHeight, i, this.frames.length);
+        }
+
+        const palette = quantize(rgba, 256);
+        const indexed = applyPalette(rgba, palette);
+
+        encoder.writeFrame(indexed, frameWidth, frameHeight, {
+          palette,
+          delay,
+        });
       }
 
-      // Use explicit delay or calculate from timestamps
-      let delay: number;
-      if (frameDelay != null) {
-        delay = Math.max(MIN_FRAME_DELAY_MS, Math.min(MAX_FRAME_DELAY_MS, frameDelay));
-      } else if (i < this.frames.length - 1) {
-        delay = this.frames[i + 1]!.timestamp - frame.timestamp;
-        delay = Math.max(MIN_FRAME_DELAY_MS, Math.min(MAX_FRAME_DELAY_MS, delay));
-      } else {
-        // Last frame: hold for 1 second
-        delay = 1000;
-      }
+      encoder.finish();
+      const bytes = encoder.bytes() as Uint8Array;
+      buffer = Buffer.from(bytes);
 
-      if (progressBar) {
-        drawProgressBar(rgba, frameWidth, frameHeight, i, this.frames.length);
-      }
-
-      const palette = quantize(rgba, 256);
-      const indexed = applyPalette(rgba, palette);
-
-      encoder.writeFrame(indexed, frameWidth, frameHeight, {
-        palette,
-        delay,
-      });
+      await writeFile(absolutePath, buffer);
+    } catch (error) {
+      if (error instanceof ToolError) throw error;
+      throw new ToolError(
+        ErrorCode.GIF_ERROR,
+        `GIF encoding/save failed: ${error instanceof Error ? error.message : String(error)}. Check disk space and path permissions.`,
+      );
     }
-
-    encoder.finish();
-    const bytes = encoder.bytes() as Uint8Array;
-    const buffer = Buffer.from(bytes);
-
-    await writeFile(absolutePath, buffer);
 
     const result = {
       path: absolutePath,

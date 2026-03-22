@@ -24,14 +24,23 @@ export async function handleScreenshot(
   validateQuality(params.quality);
   validateRegion(params.region, viewport);
 
-  const result = await withRetry(
-    () => captureScreenshot(page, {
-      format: params.format,
-      quality: params.quality,
-      region: params.region,
-    }),
-    'screenshot',
-  );
+  let result;
+  try {
+    result = await withRetry(
+      () => captureScreenshot(page, {
+        format: params.format,
+        quality: params.quality,
+        region: params.region,
+      }),
+      'screenshot',
+    );
+  } catch (error) {
+    if (error instanceof ToolError) throw error;
+    throw new ToolError(
+      ErrorCode.SCREENSHOT_FAILED,
+      `Screenshot failed: ${error instanceof Error ? error.message : String(error)}. VS Code window may be minimized or unresponsive — try vscode_snapshot to check state.`,
+    );
+  }
 
   const metadata = `Screenshot captured (${result.width}x${result.height}, ${result.format}, ${result.sizeKB}KB).`;
   return imageResult(result.buffer, result.format, metadata);
@@ -63,7 +72,16 @@ export async function handleSnapshot(
   logger.info('tool_call', { tool: 'vscode_snapshot' });
 
   const page = session.getPage();
-  const result = await takeAISnapshot(page);
+  let result;
+  try {
+    result = await takeAISnapshot(page);
+  } catch (error) {
+    if (error instanceof ToolError) throw error;
+    throw new ToolError(
+      ErrorCode.SNAPSHOT_FAILED,
+      `Snapshot failed: ${error instanceof Error ? error.message : String(error)}. VS Code may be unresponsive — try vscode_screenshot to check visually.`,
+    );
+  }
 
   const lineCount = result.full.split('\n').length;
   logger.debug('snapshot_captured', { lineCount, mode: 'ai' });
@@ -111,14 +129,23 @@ export async function handleZoom(
   validateRegion({ x: params.x, y: params.y, width: params.width, height: params.height }, viewport);
   validateQuality(params.quality);
 
-  const result = await withRetry(
-    () => captureScreenshot(page, {
-      format: params.format,
-      quality: params.quality,
-      region: { x: params.x, y: params.y, width: params.width, height: params.height },
-    }),
-    'zoom',
-  );
+  let result;
+  try {
+    result = await withRetry(
+      () => captureScreenshot(page, {
+        format: params.format,
+        quality: params.quality,
+        region: { x: params.x, y: params.y, width: params.width, height: params.height },
+      }),
+      'zoom',
+    );
+  } catch (error) {
+    if (error instanceof ToolError) throw error;
+    throw new ToolError(
+      ErrorCode.SCREENSHOT_FAILED,
+      `Zoom capture failed: ${error instanceof Error ? error.message : String(error)}. VS Code window may be minimized or unresponsive.`,
+    );
+  }
 
   const metadata = `Cropped region (${params.x},${params.y}) ${result.width}x${result.height}, ${result.format}, ${result.sizeKB}KB. Coordinates in this image are offset: add (${params.x}, ${params.y}) to convert back to window coordinates for clicks.`;
   return imageResult(result.buffer, result.format, metadata);
@@ -148,7 +175,16 @@ export async function handleFindElement(
   }
 
   // Take a snapshot to get fresh refs (invalidates previous refs)
-  const snapshotResult = await takeAISnapshot(page);
+  let snapshotResult;
+  try {
+    snapshotResult = await takeAISnapshot(page);
+  } catch (error) {
+    if (error instanceof ToolError) throw error;
+    throw new ToolError(
+      ErrorCode.SNAPSHOT_FAILED,
+      `Snapshot failed while searching for elements: ${error instanceof Error ? error.message : String(error)}. VS Code may be unresponsive.`,
+    );
+  }
 
   const lines = snapshotResult.full.split('\n');
 

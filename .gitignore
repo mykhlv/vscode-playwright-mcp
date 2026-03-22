@@ -5,6 +5,13 @@ dist/
 # Spike outputs (screenshots, logs)
 spikes/output/
 
+# Environment / secrets
+.env
+.env.*
+
+# Test coverage
+coverage/
+
 # OS
 .DS_Store
 Thumbs.db

@@ -31,7 +31,6 @@ export const ErrorCode = {
 
   // System errors
   VSCODE_NOT_FOUND: 'VSCODE_NOT_FOUND',
-  CLEANUP_FAILED: 'CLEANUP_FAILED',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
