@@ -5,7 +5,7 @@
 
 import type { ElectronApplication, Page } from 'playwright';
 import { SessionState, SessionStateMachine } from './session-state.js';
-import { launchVSCode, type LaunchConfig } from './vscode-launcher.js';
+import { launchVSCode, type LaunchConfig, type LaunchResult } from './vscode-launcher.js';
 import { trackSession, untrackSession, cleanupTempDir, installShutdownHooks } from './cleanup.js';
 import { ConsoleCollector } from './console-collector.js';
 import { ErrorCode, ToolError } from '../types/errors.js';
@@ -88,7 +88,7 @@ export class SessionManager {
       );
     }
 
-    let launchPromise: Promise<import('./vscode-launcher.js').LaunchResult> | null = null;
+    let launchPromise: Promise<LaunchResult> | null = null;
     try {
       launchPromise = launchVSCode(config);
       const result = await withTimeout(

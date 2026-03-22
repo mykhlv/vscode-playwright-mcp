@@ -15,6 +15,11 @@ export interface CollectedMessage {
   timestamp: number;
 }
 
+/** Playwright uses 'warning' for console.warn(); normalize for callers using 'warn'. */
+function normalizeLevel(level: string): string {
+  return level === 'warn' ? 'warning' : level;
+}
+
 export class ConsoleCollector {
   private messages: CollectedMessage[] = [];
   private listener: ((msg: ConsoleMessage) => void) | null = null;
@@ -51,8 +56,8 @@ export class ConsoleCollector {
 
   getMessages(level?: string): CollectedMessage[] {
     if (!level || level === 'all') return [...this.messages];
-    const normalizedLevel = level === 'warn' ? 'warning' : level;
-    return this.messages.filter((m) => m.level === normalizedLevel);
+    const normalized = normalizeLevel(level);
+    return this.messages.filter((m) => m.level === normalized);
   }
 
   /**
@@ -64,8 +69,8 @@ export class ConsoleCollector {
       this.messages = [];
       return;
     }
-    const normalizedLevel = level === 'warn' ? 'warning' : level;
-    this.messages = this.messages.filter((m) => m.level !== normalizedLevel);
+    const normalized = normalizeLevel(level);
+    this.messages = this.messages.filter((m) => m.level !== normalized);
   }
 
   clear(): void {

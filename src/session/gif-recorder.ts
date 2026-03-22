@@ -6,7 +6,9 @@
 import { writeFile } from 'node:fs/promises';
 import { resolve, isAbsolute } from 'node:path';
 import type { Page } from 'playwright';
+import { PNG } from 'pngjs';
 import { ErrorCode, ToolError } from '../types/errors.js';
+import { logger } from '../utils/logger.js';
 
 /** Minimal type for the gifenc GIFEncoder instance (no upstream types available). */
 interface GifEncoderInstance {
@@ -27,8 +29,6 @@ async function loadGifenc() {
     applyPalette: (rgba: Uint8Array, palette: number[][]) => Uint8Array;
   };
 }
-import { PNG } from 'pngjs';
-import { logger } from '../utils/logger.js';
 
 /** Maximum number of frames to prevent memory issues */
 const MAX_FRAMES = 100;
@@ -208,8 +208,6 @@ export class GifRecorder {
         // Force ALL frames to GIF_WIDTH x GIF_HEIGHT to prevent corrupt GIFs
         // from mixed dimensions. Nearest-neighbor is fine for GIF quality.
         let rgba: Uint8Array;
-        const frameWidth = GIF_WIDTH;
-        const frameHeight = GIF_HEIGHT;
 
         if (parsed.width !== GIF_WIDTH || parsed.height !== GIF_HEIGHT) {
           rgba = scaleRGBA(
@@ -236,13 +234,13 @@ export class GifRecorder {
         }
 
         if (progressBar) {
-          drawProgressBar(rgba, frameWidth, frameHeight, i, this.frames.length);
+          drawProgressBar(rgba, GIF_WIDTH, GIF_HEIGHT, i, this.frames.length);
         }
 
         const palette = quantize(rgba, 256);
         const indexed = applyPalette(rgba, palette);
 
-        encoder.writeFrame(indexed, frameWidth, frameHeight, {
+        encoder.writeFrame(indexed, GIF_WIDTH, GIF_HEIGHT, {
           palette,
           delay,
         });

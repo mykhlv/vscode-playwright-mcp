@@ -20,7 +20,10 @@ const MAX_RETRIES = 2;
 /** Delay after pressing Enter for the file to open. */
 const FILE_OPEN_SETTLE_MS = 500;
 
-/** Script to read the active file name from VS Code's DOM. */
+/**
+ * Script to read the active file name from VS Code's DOM.
+ * NOTE: Same selectors duplicated in GET_STATE_SCRIPT (state.ts) — keep in sync.
+ */
 const GET_ACTIVE_FILE_SCRIPT = `(() => {
   const activeTab = document.querySelector('.tab.active .label-name');
   if (activeTab) return activeTab.textContent.trim();

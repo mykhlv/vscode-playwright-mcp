@@ -5,7 +5,7 @@
 import type { SessionManager } from '../session/session-manager.js';
 import type { LaunchParams, CloseParams } from '../types/tool-params.js';
 import { type ToolResult, textResult } from '../types/tool-results.js';
-import { validatePathExists } from '../utils/validation.js';
+import { validatePathExists, DEFAULT_VIEWPORT } from '../utils/validation.js';
 import { ErrorCode, ToolError } from '../types/errors.js';
 import { logger } from '../utils/logger.js';
 
@@ -43,7 +43,7 @@ export async function handleLaunch(
     viewport: params.viewport,
   });
 
-  const viewport = params.viewport ?? { width: 1280, height: 720 };
+  const viewport = params.viewport ?? DEFAULT_VIEWPORT;
   const parts = [`VS Code launched successfully (${viewport.width}x${viewport.height} viewport).`];
   if (params.workspace) {
     parts.push(`Workspace: ${params.workspace}`);

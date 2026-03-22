@@ -13,6 +13,7 @@ import * as os from 'node:os';
 import { _electron } from 'playwright';
 import type { ElectronApplication, Page } from 'playwright';
 import { ErrorCode, ToolError } from '../types/errors.js';
+import { DEFAULT_VIEWPORT } from '../utils/validation.js';
 import { logger } from '../utils/logger.js';
 
 /** Well-known VS Code Electron binary paths per platform */
@@ -210,18 +211,18 @@ export async function launchVSCode(config: LaunchConfig): Promise<LaunchResult> 
   await window.waitForLoadState('domcontentloaded');
 
   // Set explicit viewport — viewportSize() returns undefined for Electron without this
-  const viewport = config.viewport ?? { width: 1280, height: 720 };
+  const viewport = config.viewport ?? DEFAULT_VIEWPORT;
   await window.setViewportSize(viewport);
 
   // Get PID for cleanup tracking
-  const pid = await getPid(app);
+  const pid = getPid(app);
 
   logger.info('launch_complete', { pid, userDataDir });
 
   return { app, window, userDataDir, pid };
 }
 
-async function getPid(app: ElectronApplication): Promise<number> {
+function getPid(app: ElectronApplication): number {
   try {
     // ElectronApplication.process() returns the spawned child process
     const proc = app.process();

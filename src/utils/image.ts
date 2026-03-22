@@ -4,6 +4,7 @@
  */
 
 import type { Page } from 'playwright';
+import { DEFAULT_VIEWPORT } from './validation.js';
 
 export interface CaptureOptions {
   format?: 'jpeg' | 'png';
@@ -53,8 +54,8 @@ export async function captureScreenshot(
     height = options.region.height;
   } else {
     const viewport = page.viewportSize();
-    width = viewport?.width ?? 1280;
-    height = viewport?.height ?? 720;
+    width = viewport?.width ?? DEFAULT_VIEWPORT.width;
+    height = viewport?.height ?? DEFAULT_VIEWPORT.height;
   }
 
   return {

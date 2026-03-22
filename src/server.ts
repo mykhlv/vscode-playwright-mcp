@@ -109,13 +109,25 @@ export async function createServer() {
   }).registerCapabilities.bind(server);
   registerCapabilities({ tools: { listChanged: true } });
 
-  // Get the raw handler map from the MCP SDK Server (Protocol base class)
+  // Get the raw handler map from the MCP SDK Server (Protocol base class).
+  // These are private internals — fail fast with a clear message if SDK changes.
   const handlers = (server as unknown as { _requestHandlers: Map<string, HandlerFn> })._requestHandlers;
-  const originalListHandler = handlers.get('tools/list')!;
-  const originalCallHandler = handlers.get('tools/call')!;
+  const maybeListHandler = handlers.get('tools/list');
+  const maybeCallHandler = handlers.get('tools/call');
+  if (!maybeListHandler || !maybeCallHandler) {
+    throw new Error(
+      'Incompatible @playwright/mcp version: expected tools/list and tools/call handlers. ' +
+      'Check that @playwright/mcp version matches the range in package.json.',
+    );
+  }
+  // Assigned after null-check so TS narrows the type inside closures
+  const originalListHandler = maybeListHandler;
+  const originalCallHandler = maybeCallHandler;
 
   // Notification sender for tools/list_changed
+  let listChangedSent = false;
   const sendListChanged = () => {
+    listChangedSent = true;
     (server as unknown as { notification: (n: { method: string }) => Promise<void> })
       .notification({ method: 'notifications/tools/list_changed' })
       .catch((err: unknown) => {
@@ -180,8 +192,9 @@ export async function createServer() {
   handlers.set('tools/list', async (request, extra) => {
     listRequestCount++;
 
-    // After first list request + a notification was sent, assume client supports it
-    if (listRequestCount > 1) {
+    // Heuristic: if client re-requests after we sent a list_changed notification,
+    // it likely supports dynamic tool discovery. Only then do we enable lazy mode.
+    if (listRequestCount > 1 && listChangedSent) {
       clientSupportsListChanged = true;
     }
 
@@ -326,6 +339,15 @@ function toMcpResponse(result: ToolResult) {
   throw new Error(`Unknown result type: ${(_exhaustive as { type: string }).type}`);
 }
 
+/** Patterns that indicate a crashed/closed VS Code session. */
+const SESSION_CLOSED_PATTERNS = [
+  'Target closed',
+  'Target page, context or browser has been closed',
+  'Browser has been closed',
+  'Protocol error',
+  'Connection closed',
+];
+
 /**
  * Convert errors to MCP error response.
  */
@@ -336,6 +358,16 @@ function toMcpError(error: unknown) {
   }
 
   const message = error instanceof Error ? error.message : String(error);
+
+  // Detect Playwright errors from a crashed/closed VS Code and surface an actionable hint
+  if (SESSION_CLOSED_PATTERNS.some((p) => message.includes(p))) {
+    logger.warn('session_closed_detected', { error: message });
+    return mcpError(
+      'VS Code session appears to have closed or crashed. ' +
+      'Call vscode_close to clean up, then vscode_launch to start a new session.',
+    );
+  }
+
   logger.error('unexpected_error', { error: message, stack: error instanceof Error ? error.stack : undefined });
   return mcpError(`Unexpected error: ${message}`);
 }

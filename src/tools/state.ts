@@ -11,7 +11,11 @@ import { type ToolResult, textResult } from '../types/tool-results.js';
 import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
 
-/** DOM scraping script for editor state. Runs inside the VS Code renderer. */
+/**
+ * DOM scraping script for editor state. Runs inside the VS Code renderer.
+ * NOTE: Active-file selectors (.tab.active .label-name, .window-title)
+ * are duplicated in GET_ACTIVE_FILE_SCRIPT (file.ts) — keep in sync.
+ */
 export const GET_STATE_SCRIPT = `(() => {
   const result = {};
 
@@ -574,7 +578,7 @@ export async function handleGetHover(
 
   if (!result.found || !result.text) {
     return textResult(
-      'No hover tooltip visible. Use vscode_hover first to trigger a tooltip at specific coordinates, then call vscode_get_hover to read it.',
+      'No hover tooltip visible. Use browser_hover first to trigger a tooltip at specific coordinates, then call vscode_get_hover to read it.',
     );
   }
 

@@ -72,8 +72,15 @@ export function createVSCodeTools(
       timeoutMs: 35_000,
       handler: async (params) => {
         const result = await handleLaunch(session, params as LaunchParams);
-        // Provide BrowserContext to @playwright/mcp after successful launch
-        bridge.provide(session.getPage().context());
+        // Provide BrowserContext to @playwright/mcp after successful launch.
+        // If provide() fails (e.g., bridge already provided), close the session
+        // to avoid an inconsistent state where native tools work but aliased tools hang.
+        try {
+          bridge.provide(session.getPage().context());
+        } catch (err) {
+          await handleClose(session, {} as CloseParams).catch(() => {});
+          throw err;
+        }
         return result;
       },
     },
@@ -227,7 +234,7 @@ export function createVSCodeTools(
         ),
       })),
       timeoutMs: 5_000,
-      handler: (_params) => handleGif(recorder, _params as unknown as GifParams),
+      handler: (params) => handleGif(recorder, params as unknown as GifParams),
     },
   ];
 }

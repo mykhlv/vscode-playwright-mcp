@@ -11,6 +11,9 @@ import { type ToolResult, textResult } from '../types/tool-results.js';
 import { validateCoordinates, validateScrollAmount, DEFAULT_VIEWPORT } from '../utils/validation.js';
 import { logger } from '../utils/logger.js';
 
+/** Pixels per scroll unit — maps to typical mouse wheel behavior. */
+const PIXELS_PER_SCROLL_UNIT = 100;
+
 export async function handleScroll(
   session: SessionManager,
   params: ScrollParams,
@@ -26,23 +29,21 @@ export async function handleScroll(
   const amount = params.amount ?? 3;
 
   // Playwright mouse.wheel takes deltaX, deltaY in pixels.
-  // Each "scroll unit" maps to ~100px, matching typical scroll behavior.
-  const pixelsPerUnit = 100;
   let deltaX = 0;
   let deltaY = 0;
 
   switch (params.direction) {
     case 'up':
-      deltaY = -amount * pixelsPerUnit;
+      deltaY = -amount * PIXELS_PER_SCROLL_UNIT;
       break;
     case 'down':
-      deltaY = amount * pixelsPerUnit;
+      deltaY = amount * PIXELS_PER_SCROLL_UNIT;
       break;
     case 'left':
-      deltaX = -amount * pixelsPerUnit;
+      deltaX = -amount * PIXELS_PER_SCROLL_UNIT;
       break;
     case 'right':
-      deltaX = amount * pixelsPerUnit;
+      deltaX = amount * PIXELS_PER_SCROLL_UNIT;
       break;
   }
 
