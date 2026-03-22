@@ -51,6 +51,12 @@ const VSCODE_TO_BROWSER = new Map(
   Object.entries(BROWSER_TO_VSCODE).map(([browser, vscode]) => [vscode, browser]),
 );
 
+/** Override upstream descriptions to add VS Code-specific guidance. */
+const DESCRIPTION_OVERRIDES: Record<string, string> = {
+  vscode_type: 'Type text into focused UI element (search box, input field, Command Palette). ' +
+    'NOTE: Does NOT work in the Monaco code editor — use vscode_press_key for typing into the editor.',
+};
+
 /** Browser tools to filter out completely (nonsensical for VS Code Electron). */
 const FILTERED_BROWSER_TOOLS = new Set([
   'browser_close',           // Must use vscode_close for cleanup (temp dirs, PIDs, state)
@@ -171,7 +177,8 @@ export async function createServer() {
       if (FILTERED_BROWSER_TOOLS.has(tool.name)) continue;
       const alias = BROWSER_TO_VSCODE[tool.name];
       if (alias) {
-        aliasedTools.push({ ...tool, name: alias });
+        const description = DESCRIPTION_OVERRIDES[alias] ?? tool.description;
+        aliasedTools.push({ ...tool, name: alias, description });
       }
     }
 
