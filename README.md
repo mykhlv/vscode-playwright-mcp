@@ -1,8 +1,6 @@
 # vscode-playwright-mcp
 
-Playwright for VS Code. An MCP server that gives LLMs full mouse, keyboard, and visual control over VS Code via Playwright's Electron API.
-
-Just like [Playwright MCP](https://github.com/anthropics/playwright-mcp) lets AI control web browsers, `vscode-playwright-mcp` lets AI control VS Code — click UI elements, type code, run commands, take screenshots, read editor state, and record GIFs.
+A VS Code-aware layer on top of [@playwright/mcp](https://github.com/microsoft/playwright-mcp). Gives LLMs full control over VS Code — click UI elements, type code, run commands, take screenshots, read editor state, and record GIFs.
 
 **Use cases:**
 - E2E testing of VS Code extensions
@@ -13,42 +11,39 @@ Just like [Playwright MCP](https://github.com/anthropics/playwright-mcp) lets AI
 
 ## How It Works
 
-A single Node.js process communicates over stdio using the MCP (Model Context Protocol) JSON-RPC transport. It launches VS Code as an Electron app via `playwright-core`, giving the connected LLM full control through 22 tools.
+Built on top of `@playwright/mcp`, which provides generic Electron automation (click, type, screenshot, etc.). We add a VS Code-specific layer: isolated launch with temp user-data-dir, command palette automation, editor state scraping, and Monaco-aware tools.
 
-Each session runs in an isolated temp `--user-data-dir` with telemetry and the Welcome tab suppressed automatically.
+Generic tools from `@playwright/mcp` are aliased to `vscode_*` names for a unified LLM experience. Before `vscode_launch`, only 1 tool is visible (lazy discovery saves ~10k context tokens). After launch, all ~26 tools appear.
 
 ## Requirements
 
 - Node.js >= 22
-- VS Code installed locally (the server auto-detects the binary on macOS and Linux)
-- `playwright-core` (no browser downloads needed)
+- VS Code installed locally (auto-detected on macOS and Linux)
 
-## Installation
-
-```bash
-npm install
-npm run build
-```
-
-## Usage
-
-Configure your MCP client to launch the server over stdio:
+## Quick Start
 
 ```json
 {
   "mcpServers": {
     "vscode": {
-      "command": "node",
-      "args": ["dist/index.js"]
+      "command": "npx",
+      "args": ["vscode-playwright-mcp"]
     }
   }
 }
 ```
 
-You can pass a custom VS Code binary path:
+Custom VS Code binary:
 
-```bash
-node dist/index.js --vscode-path /path/to/code
+```json
+{
+  "mcpServers": {
+    "vscode": {
+      "command": "npx",
+      "args": ["vscode-playwright-mcp", "--vscode-path", "/path/to/code"]
+    }
+  }
+}
 ```
 
 ## Tools
@@ -57,60 +52,76 @@ node dist/index.js --vscode-path /path/to/code
 
 | Tool | Description |
 |------|-------------|
-| `vscode_launch` | Launch a VS Code instance. Options: workspace folder, extensions to install, viewport size. |
-| `vscode_close` | Gracefully close the running VS Code instance. |
+| `vscode_launch` | Launch an isolated VS Code instance. Options: workspace, extensions, viewport size, settings. |
+| `vscode_close` | Close VS Code and clean up temp files/processes. |
 
-### Vision
-
-| Tool | Description |
-|------|-------------|
-| `vscode_screenshot` | Capture a full-window screenshot (JPEG or PNG). |
-| `vscode_zoom` | Capture a cropped screenshot of a specific region for closer inspection. |
-| `vscode_snapshot` | Get an accessibility tree snapshot with `[ref=eN]` annotations on interactive elements. |
-| `vscode_find_element` | Search the accessibility tree by role and/or name. Returns matching elements with refs. |
-
-### Mouse
+### Vision (aliased from @playwright/mcp)
 
 | Tool | Description |
 |------|-------------|
-| `vscode_click` | Click at x/y coordinates, a `ref` from snapshot, or an editor `line`/`column`. |
-| `vscode_hover` | Hover at x/y coordinates, a `ref`, or an editor `line`/`column`. |
-| `vscode_scroll` | Scroll up or down by a given amount. |
+| `vscode_screenshot` | Full-window screenshot. |
+| `vscode_snapshot` | Accessibility tree with `[ref=eN]` annotations on interactive elements. |
+| `vscode_zoom` | Cropped screenshot of a specific region (native — Monaco-aware). |
+| `vscode_find_element` | Search a11y tree by role/name, returns refs (native). |
+
+### Mouse & Keyboard (aliased from @playwright/mcp)
+
+| Tool | Description |
+|------|-------------|
+| `vscode_click` | Click by ref, element description, or coordinates. |
+| `vscode_type` | Type text into focused element. |
+| `vscode_press_key` | Press key combinations (e.g., `Control+Shift+P`). |
+| `vscode_hover` | Hover to reveal tooltips. |
 | `vscode_drag` | Drag from one point to another. |
+| `vscode_click_xy` | Click at exact pixel coordinates. |
+| `vscode_hover_xy` | Hover at exact pixel coordinates. |
+| `vscode_drag_xy` | Drag between exact pixel coordinates. |
+| `vscode_select_option` | Select from dropdown/combobox. |
+| `vscode_fill_form` | Fill form inputs. |
 
-### Keyboard
-
-| Tool | Description |
-|------|-------------|
-| `vscode_type` | Type text into the focused element. |
-| `vscode_press_key` | Press a key combination (e.g., `Control+Shift+P`). |
-
-### Commands and State
+### VS Code Commands (native)
 
 | Tool | Description |
 |------|-------------|
 | `vscode_run_command` | Execute a VS Code command via Command Palette automation. |
-| `vscode_get_state` | Read editor state via DOM scraping: active file, cursor, diagnostics, completions, peek widget. |
-| `vscode_get_hover` | Read hover tooltip content as text. |
-| `vscode_ensure_file` | Open and activate a file by path with verification and retry. |
+| `vscode_ensure_file` | Open and activate a file by path with verification. |
 
-### Advanced
+### State (native)
 
 | Tool | Description |
 |------|-------------|
-| `vscode_evaluate` | Run arbitrary JavaScript in the VS Code renderer process. |
-| `vscode_wait_for` | Wait for a CSS selector state, text appearance, or a simple delay. |
-| `vscode_console` | Retrieve console messages (log/warn/error/info) from the renderer process. |
-| `vscode_resize` | Resize the VS Code viewport on the fly (min 200x200, max 3840x2160). |
-| `vscode_gif` | Record VS Code actions as an animated GIF. |
+| `vscode_get_state` | Read editor state: active file, cursor, diagnostics, completions, peek widget. |
+| `vscode_get_hover` | Read hover tooltip content as text. |
+
+### Advanced (mixed)
+
+| Tool | Description |
+|------|-------------|
+| `vscode_evaluate` | Run JavaScript in the VS Code renderer process (aliased). |
+| `vscode_wait_for` | Wait for selector state, text, or delay (aliased). |
+| `vscode_console` | Retrieve console messages from renderer (aliased). |
+| `vscode_resize` | Resize viewport on the fly (aliased). |
+| `vscode_scroll` | Scroll up/down by amount (native). |
+| `vscode_gif` | Record actions as animated GIF (native). |
 
 ## Interaction Strategies
 
-The LLM has two main ways to interact with VS Code:
+1. **Ref-based (preferred for UI):** `vscode_snapshot` → see `[ref=eN]` annotations → `vscode_click(ref="e5")`. Deterministic, no coordinate guessing.
 
-1. **Keyboard-first (preferred for navigation):** `vscode_snapshot` shows roles, names, states, and keyboard shortcuts. The LLM reads the snapshot, identifies the target, and uses `vscode_press_key` or a `ref`-based click.
+2. **Keyboard-first (preferred for navigation):** `vscode_snapshot` → see shortcuts → `vscode_press_key`. Fastest for commands.
 
-2. **Visual (required for editor content):** Monaco editor content is opaque to accessibility APIs. The LLM takes a `vscode_screenshot`, reads the image, and clicks at x/y coordinates or uses `line`/`column` parameters.
+3. **Visual (required for editor content):** Monaco editor is opaque to accessibility APIs. `vscode_screenshot` or `vscode_zoom` → read the image → `vscode_click_xy(x, y)`.
+
+## How is this different from Playwright MCP?
+
+This project is **built on top of** [@playwright/mcp](https://github.com/microsoft/playwright-mcp), not a replacement. Playwright MCP provides generic Electron automation. We add:
+
+- **Isolated VS Code launch** with temp user-data-dir, suppressed Welcome tab, settings injection
+- **Command palette automation** (`vscode_run_command`) — execute commands by name
+- **Editor state scraping** (`vscode_get_state`) — cursor, diagnostics, completions, peek widget
+- **Monaco-aware tools** (`vscode_zoom`, `vscode_find_element`) — the editor is invisible to generic a11y tools
+- **Lazy tool discovery** — 1 tool visible before launch, all ~26 after (saves context tokens)
+- **GIF recording** of VS Code sessions
 
 ## Development
 
@@ -123,10 +134,6 @@ npm run test:e2e       # Run E2E tests (full MCP protocol loop)
 npm run typecheck      # Type-check with tsc
 npm run lint           # Lint with ESLint
 ```
-
-## How is this different from Playwright MCP?
-
-[Playwright MCP](https://github.com/anthropics/playwright-mcp) controls **web browsers** (Chrome, Firefox, etc.). This project controls **VS Code** — a desktop Electron app with its own UI paradigm (editors, panels, command palette, extensions). The tools are purpose-built for VS Code interaction patterns.
 
 ## License
 
