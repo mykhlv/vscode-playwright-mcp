@@ -10,8 +10,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { _electron } from 'playwright-core';
-import type { ElectronApplication, Page } from 'playwright-core';
+import { _electron } from 'playwright';
+import type { ElectronApplication, Page } from 'playwright';
 import { ErrorCode, ToolError } from '../types/errors.js';
 import { logger } from '../utils/logger.js';
 
@@ -153,6 +153,9 @@ export async function launchVSCode(config: LaunchConfig): Promise<LaunchResult> 
 
   // Build CLI args
   const launchArgs = [
+    // Required: playwright@1.59+ removed --remote-debugging-port=0 from Electron defaults,
+    // but it's still needed for CDP communication with the VS Code process.
+    '--remote-debugging-port=0',
     '--disable-gpu',
     '--disable-workspace-trust',
     '--skip-release-notes',

@@ -39,7 +39,7 @@ async function main(): Promise<void> {
 
   logger.info('starting', { verbose, vscodePath });
 
-  const server = createServer();
+  const server = await createServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
 

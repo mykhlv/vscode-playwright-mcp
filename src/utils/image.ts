@@ -3,7 +3,7 @@
  * Handles JPEG/PNG capture, optional crop, and metadata generation.
  */
 
-import type { Page } from 'playwright-core';
+import type { Page } from 'playwright';
 
 export interface CaptureOptions {
   format?: 'jpeg' | 'png';

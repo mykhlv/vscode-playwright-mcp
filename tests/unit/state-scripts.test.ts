@@ -4,8 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { Page } from 'playwright-core';
-import { GET_STATE_SCRIPT, GET_HOVER_SCRIPT, resolveEditorPosition } from '../../src/tools/state.js';
+import { GET_STATE_SCRIPT, GET_HOVER_SCRIPT } from '../../src/tools/state.js';
 
 // We can't run page.evaluate() in unit tests, but we can verify
 // the scripts are valid JavaScript that can be parsed.
@@ -78,30 +77,6 @@ describe('GET_HOVER_SCRIPT', () => {
   it('checks visibility of hover widget', () => {
     expect(GET_HOVER_SCRIPT).toContain('display');
     expect(GET_HOVER_SCRIPT).toContain('visibility');
-  });
-});
-
-describe('resolveEditorPosition', () => {
-  it('is exported as a function', () => {
-    expect(typeof resolveEditorPosition).toBe('function');
-  });
-
-  it('throws on resolution failure with actionable message', async () => {
-    // Mock page that returns found: false
-    const mockPage = {
-      evaluate: async () => ({ x: 0, y: 0, found: false }),
-    };
-    await expect(resolveEditorPosition(mockPage as unknown as Page, 99, 1)).rejects.toThrow(
-      /Could not resolve editor position/,
-    );
-  });
-
-  it('returns coordinates on successful resolution', async () => {
-    const mockPage = {
-      evaluate: async () => ({ x: 150, y: 300, found: true }),
-    };
-    const result = await resolveEditorPosition(mockPage as unknown as Page, 10, 5);
-    expect(result).toEqual({ x: 150, y: 300 });
   });
 });
 

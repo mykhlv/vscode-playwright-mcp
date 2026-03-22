@@ -8,6 +8,6 @@ export default defineConfig({
   splitting: false,
   sourcemap: false,
   minify: false,
-  external: ['playwright-core'],
+  external: ['playwright', '@playwright/mcp', '@modelcontextprotocol/sdk'],
   banner: { js: '#!/usr/bin/env node' },
 });

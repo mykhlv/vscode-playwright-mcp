@@ -5,11 +5,9 @@
  * as structured text. Much cheaper than screenshots for getting editor metadata.
  */
 
-import type { Page } from 'playwright-core';
 import type { SessionManager } from '../session/session-manager.js';
 import type { GetStateParams, GetHoverParams } from '../types/tool-params.js';
 import { type ToolResult, textResult } from '../types/tool-results.js';
-import { ErrorCode, ToolError } from '../types/errors.js';
 import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
 
@@ -583,72 +581,3 @@ export async function handleGetHover(
   return textResult(`Hover content:\n${result.text}`);
 }
 
-/**
- * Resolve editor line:column to pixel coordinates via DOM scraping.
- * Uses a function (not string) so Playwright can pass arguments.
- */
-function resolveEditorPositionFn([targetLine, targetCol]: [number, number]): EditorPositionResult {
-  const lineNumberEls = document.querySelectorAll('.margin-view-overlays .line-numbers');
-
-  for (const el of lineNumberEls) {
-    const lineNum = parseInt(el.textContent!.trim(), 10);
-    if (lineNum !== targetLine) continue;
-
-    const lineRect = el.getBoundingClientRect();
-
-    // Find the corresponding view-line at the same vertical position
-    const viewLines = document.querySelectorAll('.view-lines .view-line');
-    for (const viewLine of viewLines) {
-      const viewRect = viewLine.getBoundingClientRect();
-      if (Math.abs(viewRect.top - lineRect.top) > 2) continue;
-
-      // Calculate character width from the first text span
-      const firstSpan = viewLine.querySelector('span span');
-      let charWidth = 7.2; // reasonable monospace fallback
-      if (firstSpan && firstSpan.textContent && firstSpan.textContent.length > 0) {
-        charWidth = firstSpan.getBoundingClientRect().width / firstSpan.textContent.length;
-      }
-
-      const x = viewRect.left + (targetCol - 1) * charWidth;
-      const y = viewRect.top + viewRect.height / 2;
-      return { x: Math.round(x), y: Math.round(y), found: true };
-    }
-  }
-
-  return { x: 0, y: 0, found: false };
-}
-
-interface EditorPositionResult {
-  x: number;
-  y: number;
-  found: boolean;
-}
-
-/**
- * Resolve editor line:column to pixel coordinates via DOM scraping.
- * The target line must be visible in the editor viewport.
- */
-export async function resolveEditorPosition(
-  page: Page,
-  line: number,
-  column: number,
-): Promise<{ x: number; y: number }> {
-  const result = await withRetry(
-    () => page.evaluate(
-      resolveEditorPositionFn,
-      [line, column] as [number, number],
-    ),
-    'resolve_editor_position',
-  );
-
-  if (!result.found) {
-    throw new ToolError(
-      ErrorCode.INVALID_INPUT,
-      `Could not resolve editor position at line ${line}, column ${column}. ` +
-      'Make sure the line is visible in the editor viewport. ' +
-      'Use vscode_scroll or vscode_run_command with "Go to Line" to scroll the target line into view.',
-    );
-  }
-
-  return { x: result.x, y: result.y };
-}

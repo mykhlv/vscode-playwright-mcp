@@ -4,7 +4,6 @@ import {
   validateNonEmptyString,
   validateQuality,
   validateRegion,
-  validateClickCount,
   validateScrollAmount,
 } from '../../src/utils/validation.js';
 import { ToolError } from '../../src/types/errors.js';
@@ -108,21 +107,6 @@ describe('validateRegion', () => {
   it('rejects regions that exceed viewport', () => {
     expect(() => validateRegion({ x: 1200, y: 0, width: 100, height: 100 }, viewport)).toThrow(ToolError);
     expect(() => validateRegion({ x: 0, y: 700, width: 100, height: 100 }, viewport)).toThrow(ToolError);
-  });
-});
-
-describe('validateClickCount', () => {
-  it('accepts undefined and valid counts', () => {
-    expect(() => validateClickCount(undefined)).not.toThrow();
-    expect(() => validateClickCount(1)).not.toThrow();
-    expect(() => validateClickCount(2)).not.toThrow();
-    expect(() => validateClickCount(3)).not.toThrow();
-  });
-
-  it('rejects invalid counts', () => {
-    expect(() => validateClickCount(0)).toThrow(ToolError);
-    expect(() => validateClickCount(4)).toThrow(ToolError);
-    expect(() => validateClickCount(1.5)).toThrow(ToolError);
   });
 });
 

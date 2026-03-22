@@ -3,7 +3,7 @@
  * One active session at a time. Tools get a reference to the session manager.
  */
 
-import type { ElectronApplication, Page } from 'playwright-core';
+import type { ElectronApplication, Page } from 'playwright';
 import { SessionState, SessionStateMachine } from './session-state.js';
 import { launchVSCode, type LaunchConfig } from './vscode-launcher.js';
 import { trackSession, untrackSession, cleanupTempDir, installShutdownHooks } from './cleanup.js';

@@ -1,6 +1,6 @@
 /**
- * Input parameter interfaces for all tools.
- * These map 1:1 to the JSON schemas registered with the MCP server.
+ * Input parameter interfaces for VS Code-specific tools.
+ * Generic browser tools (click, type, screenshot, etc.) are handled by @playwright/mcp.
  */
 
 export interface LaunchParams {
@@ -14,59 +14,6 @@ export interface LaunchParams {
 }
 
 export type CloseParams = Record<string, never>;
-
-export interface ScreenshotParams {
-  region?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
-  format?: 'jpeg' | 'png';
-  quality?: number;
-}
-
-export interface ClickParams {
-  ref?: string;
-  x?: number;
-  y?: number;
-  line?: number;
-  column?: number;
-  button?: 'left' | 'right' | 'middle';
-  click_count?: number;
-  modifiers?: ('Control' | 'Shift' | 'Alt' | 'Meta')[];
-}
-
-export interface TypeParams {
-  text: string;
-  delay?: number;
-}
-
-export interface PressKeyParams {
-  key: string;
-}
-
-export interface HoverParams {
-  ref?: string;
-  x?: number;
-  y?: number;
-  line?: number;
-  column?: number;
-}
-
-export interface ScrollParams {
-  x: number;
-  y: number;
-  direction: 'up' | 'down' | 'left' | 'right';
-  amount?: number;
-}
-
-export interface DragParams {
-  start_x: number;
-  start_y: number;
-  end_x: number;
-  end_y: number;
-}
 
 export interface RunCommandParams {
   command: string;
@@ -95,27 +42,11 @@ export interface GifParams {
   capture_on?: 'auto' | 'manual';
 }
 
-export interface EvaluateParams {
-  expression: string;
-  timeout?: number;
-}
-
-export interface WaitForParams {
-  selector?: string;
-  state?: 'visible' | 'hidden' | 'attached' | 'detached';
-  timeout?: number;
-  text?: string;
-}
-
-export interface ConsoleParams {
-  clear?: boolean;
-  level?: 'log' | 'warn' | 'error' | 'info' | 'all';
-  limit?: number;
-}
-
-export interface ResizeParams {
-  width: number;
-  height: number;
+export interface ScrollParams {
+  x: number;
+  y: number;
+  direction: 'up' | 'down' | 'left' | 'right';
+  amount?: number;
 }
 
 export interface ZoomParams {

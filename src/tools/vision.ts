@@ -1,55 +1,22 @@
 /**
- * Tool handlers: vscode_screenshot, vscode_snapshot, vscode_resize, vscode_zoom, vscode_find_element
+ * Tool handlers: vscode_zoom, vscode_find_element
+ *
+ * Screenshot and snapshot are now delegated to @playwright/mcp's browser_take_screenshot
+ * and browser_snapshot. Resize is delegated to browser_resize.
  */
 
-import type { Page } from 'playwright-core';
+import type { Page } from 'playwright';
 import type { SessionManager } from '../session/session-manager.js';
-import type { ScreenshotParams, ResizeParams, ZoomParams, FindElementParams } from '../types/tool-params.js';
+import type { ZoomParams, FindElementParams } from '../types/tool-params.js';
 import { type ToolResult, textResult, imageResult } from '../types/tool-results.js';
 import { ErrorCode, ToolError } from '../types/errors.js';
-import { validateQuality, validateRegion, validateViewportSize } from '../utils/validation.js';
+import { validateQuality, validateRegion, DEFAULT_VIEWPORT } from '../utils/validation.js';
 import { captureScreenshot } from '../utils/image.js';
 import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
 
-export async function handleScreenshot(
-  session: SessionManager,
-  params: ScreenshotParams,
-): Promise<ToolResult> {
-  logger.info('tool_call', { tool: 'vscode_screenshot', params });
-
-  const page = session.getPage();
-  const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
-
-  validateQuality(params.quality);
-  validateRegion(params.region, viewport);
-
-  let result;
-  try {
-    result = await withRetry(
-      () => captureScreenshot(page, {
-        format: params.format,
-        quality: params.quality,
-        region: params.region,
-      }),
-      'screenshot',
-    );
-  } catch (error) {
-    if (error instanceof ToolError) throw error;
-    throw new ToolError(
-      ErrorCode.SCREENSHOT_FAILED,
-      `Screenshot failed: ${error instanceof Error ? error.message : String(error)}. VS Code window may be minimized or unresponsive — try vscode_snapshot to check state.`,
-    );
-  }
-
-  const metadata = `Screenshot captured (${result.width}x${result.height}, ${result.format}, ${result.sizeKB}KB).`;
-  return imageResult(result.buffer, result.format, metadata);
-}
-
 /**
  * AI snapshot result from Playwright's internal _snapshotForAI().
- * Returns YAML with [ref=eN] on interactive elements and populates
- * the aria-ref selector engine for subsequent locator queries.
  */
 interface AISnapshotResult {
   full: string;
@@ -58,62 +25,11 @@ interface AISnapshotResult {
 
 type SnapshotPage = { _snapshotForAI(opts: { timeout: number }): Promise<AISnapshotResult> };
 
-/** Take an AI snapshot with retry. Centralizes the unsafe cast. */
+/** Take an AI snapshot with retry. Used by handleFindElement. */
 async function takeAISnapshot(page: Page): Promise<AISnapshotResult> {
   return withRetry(
     () => (page as unknown as SnapshotPage)._snapshotForAI({ timeout: 10000 }),
     'snapshot',
-  );
-}
-
-export async function handleSnapshot(
-  session: SessionManager,
-): Promise<ToolResult> {
-  logger.info('tool_call', { tool: 'vscode_snapshot' });
-
-  const page = session.getPage();
-  let result;
-  try {
-    result = await takeAISnapshot(page);
-  } catch (error) {
-    if (error instanceof ToolError) throw error;
-    throw new ToolError(
-      ErrorCode.SNAPSHOT_FAILED,
-      `Snapshot failed: ${error instanceof Error ? error.message : String(error)}. VS Code may be unresponsive — try vscode_screenshot to check visually.`,
-    );
-  }
-
-  const lineCount = result.full.split('\n').length;
-  logger.debug('snapshot_captured', { lineCount, mode: 'ai' });
-
-  return textResult(
-    `Accessibility snapshot (${lineCount} lines):\n` +
-    'Interactive elements have [ref=eN] — use ref with vscode_click or vscode_hover.\n\n' +
-    result.full,
-  );
-}
-
-/** Layout settling delay after viewport resize (ms). */
-const RESIZE_SETTLE_MS = 100;
-
-export async function handleResize(
-  session: SessionManager,
-  params: ResizeParams,
-): Promise<ToolResult> {
-  logger.info('tool_call', { tool: 'vscode_resize', params });
-
-  const page = session.getPage();
-
-  validateViewportSize(params.width, params.height);
-
-  await page.setViewportSize({ width: params.width, height: params.height });
-  await page.waitForTimeout(RESIZE_SETTLE_MS);
-
-  const actual = page.viewportSize();
-  const w = actual?.width ?? params.width;
-  const h = actual?.height ?? params.height;
-  return textResult(
-    `Viewport resized to ${w}x${h}. Take a screenshot to see the result.`,
   );
 }
 
@@ -124,7 +40,7 @@ export async function handleZoom(
   logger.info('tool_call', { tool: 'vscode_zoom', params });
 
   const page = session.getPage();
-  const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
+  const viewport = page.viewportSize() ?? DEFAULT_VIEWPORT;
 
   validateRegion({ x: params.x, y: params.y, width: params.width, height: params.height }, viewport);
   validateQuality(params.quality);
@@ -198,7 +114,6 @@ export async function handleFindElement(
     if (!trimmed) continue;
 
     // Snapshot lines look like: - button "Save" [ref=e5] or - img [ref=e3]
-    // Role is the first word after "- "
     const match = trimmed.match(/^-\s+(\S+)(.*)/);
     if (!match?.[1]) continue;
 
@@ -227,7 +142,7 @@ export async function handleFindElement(
       params.name && `name="${params.name}"`,
     ].filter(Boolean).join(', ');
     return textResult(
-      `No elements found matching ${criteria}. Use vscode_snapshot to see all available elements.`,
+      `No elements found matching ${criteria}. Use browser_snapshot to see all available elements.`,
     );
   }
 

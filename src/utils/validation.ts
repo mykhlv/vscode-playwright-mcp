@@ -6,7 +6,7 @@
 import * as fs from 'node:fs';
 import { ErrorCode, ToolError } from '../types/errors.js';
 
-const DEFAULT_VIEWPORT = { width: 1280, height: 720 };
+export const DEFAULT_VIEWPORT = { width: 1280, height: 720 };
 
 export function validateCoordinates(
   x: number,
@@ -79,24 +79,6 @@ export function validateRegion(
     throw new ToolError(
       ErrorCode.INVALID_INPUT,
       `Screenshot region {x:${x}, y:${y}, width:${width}, height:${height}} exceeds window bounds (${viewport.width}x${viewport.height}).`,
-    );
-  }
-}
-
-export function validateClickCount(count: number | undefined): void {
-  if (count !== undefined && (!Number.isInteger(count) || count < 1 || count > 3)) {
-    throw new ToolError(
-      ErrorCode.INVALID_INPUT,
-      `click_count must be 1, 2, or 3. Got ${count}.`,
-    );
-  }
-}
-
-export function validateViewportSize(width: number, height: number): void {
-  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 200 || height < 200 || width > 3840 || height > 2160) {
-    throw new ToolError(
-      ErrorCode.INVALID_INPUT,
-      `Viewport size must be integers between 200x200 and 3840x2160. Got ${width}x${height}.`,
     );
   }
 }

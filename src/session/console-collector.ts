@@ -3,7 +3,7 @@
  * Attach to a Playwright Page to capture console.log/warn/error/info output.
  */
 
-import type { Page, ConsoleMessage } from 'playwright-core';
+import type { Page, ConsoleMessage } from 'playwright';
 import { logger } from '../utils/logger.js';
 
 export const MAX_MESSAGES = 10_000;

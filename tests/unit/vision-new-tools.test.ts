@@ -1,10 +1,10 @@
 /**
- * Unit tests for vscode_resize, vscode_zoom, vscode_find_element handlers.
+ * Unit tests for vscode_zoom, vscode_find_element handlers.
+ * handleResize was delegated to @playwright/mcp's browser_resize.
  */
 
 import { describe, it, expect } from 'vitest';
-import { handleResize, handleZoom, handleFindElement } from '../../src/tools/vision.js';
-import { validateViewportSize } from '../../src/utils/validation.js';
+import { handleZoom, handleFindElement } from '../../src/tools/vision.js';
 import { ToolError } from '../../src/types/errors.js';
 import type { SessionManager } from '../../src/session/session-manager.js';
 
@@ -30,46 +30,6 @@ function createMockSession(opts: {
     }),
   } as unknown as SessionManager;
 }
-
-// --- validateViewportSize ---
-
-describe('validateViewportSize', () => {
-  it('accepts valid sizes', () => {
-    expect(() => validateViewportSize(200, 200)).not.toThrow();
-    expect(() => validateViewportSize(1280, 720)).not.toThrow();
-    expect(() => validateViewportSize(3840, 2160)).not.toThrow();
-  });
-
-  it('rejects too small', () => {
-    expect(() => validateViewportSize(199, 200)).toThrow(ToolError);
-    expect(() => validateViewportSize(200, 199)).toThrow(ToolError);
-  });
-
-  it('rejects too large', () => {
-    expect(() => validateViewportSize(3841, 2160)).toThrow(ToolError);
-    expect(() => validateViewportSize(3840, 2161)).toThrow(ToolError);
-  });
-
-  it('rejects non-integers', () => {
-    expect(() => validateViewportSize(1280.5, 720)).toThrow(ToolError);
-  });
-});
-
-// --- handleResize ---
-
-describe('handleResize', () => {
-  it('resizes viewport and returns confirmation', async () => {
-    const session = createMockSession();
-    const result = await handleResize(session, { width: 800, height: 600 });
-    expect(result.type).toBe('text');
-    expect((result as { text: string }).text).toContain('800x600');
-  });
-
-  it('rejects invalid dimensions', async () => {
-    const session = createMockSession();
-    await expect(handleResize(session, { width: 100, height: 100 })).rejects.toThrow(ToolError);
-  });
-});
 
 // --- handleZoom ---
 
@@ -144,7 +104,7 @@ describe('handleFindElement', () => {
     const result = await handleFindElement(session, { role: 'menuitem' });
     const text = (result as { text: string }).text;
     expect(text).toContain('No elements found');
-    expect(text).toContain('vscode_snapshot');
+    expect(text).toContain('browser_snapshot');
   });
 
   it('respects max_results', async () => {

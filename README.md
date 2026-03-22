@@ -1,6 +1,15 @@
 # vscode-playwright-mcp
 
-MCP server that gives LLMs mouse, keyboard, and visual control over VS Code via Playwright's Electron API. Primary use case: AI-driven E2E testing of VS Code extensions.
+Playwright for VS Code. An MCP server that gives LLMs full mouse, keyboard, and visual control over VS Code via Playwright's Electron API.
+
+Just like [Playwright MCP](https://github.com/anthropics/playwright-mcp) lets AI control web browsers, `vscode-playwright-mcp` lets AI control VS Code — click UI elements, type code, run commands, take screenshots, read editor state, and record GIFs.
+
+**Use cases:**
+- E2E testing of VS Code extensions
+- Automated VS Code workflows and tasks
+- AI-driven code editing and refactoring
+- Interactive demos and tutorials
+- Testing themes, keybindings, and settings
 
 ## How It Works
 
@@ -114,6 +123,10 @@ npm run test:e2e       # Run E2E tests (full MCP protocol loop)
 npm run typecheck      # Type-check with tsc
 npm run lint           # Lint with ESLint
 ```
+
+## How is this different from Playwright MCP?
+
+[Playwright MCP](https://github.com/anthropics/playwright-mcp) controls **web browsers** (Chrome, Firefox, etc.). This project controls **VS Code** — a desktop Electron app with its own UI paradigm (editors, panels, command palette, extensions). The tools are purpose-built for VS Code interaction patterns.
 
 ## License
 

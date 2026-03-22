@@ -2,7 +2,33 @@
 
 ## Unreleased
 
+### Changed (BREAKING)
+- **Built on top of `@playwright/mcp`**: Generic browser automation tools (click, type, screenshot, snapshot, hover, drag, resize, evaluate, wait_for, console) are now provided by `@playwright/mcp` with `browser_*` prefix instead of `vscode_*`.
+- Tool names changed for generic operations:
+  - `vscode_screenshot` → `browser_take_screenshot`
+  - `vscode_snapshot` → `browser_snapshot`
+  - `vscode_click` → `browser_click` / `browser_mouse_click_xy`
+  - `vscode_type` → `browser_type`
+  - `vscode_press_key` → `browser_press_key`
+  - `vscode_hover` → `browser_hover` / `browser_mouse_move_xy`
+  - `vscode_drag` → `browser_drag` / `browser_mouse_drag_xy`
+  - `vscode_resize` → `browser_resize`
+  - `vscode_evaluate` → `browser_evaluate`
+  - `vscode_wait_for` → `browser_wait_for`
+  - `vscode_console` → `browser_console_messages`
+- Replaced `playwright-core` dependency with `playwright` (transitive via `@playwright/mcp`)
+- `createServer()` is now async (returns `Promise<Server>` instead of `McpServer`)
+- Added `--remote-debugging-port=0` to Electron launch args (required by `playwright@1.59+`)
+
 ### Added
+- `ContextBridge` class: deferred-promise bridge between vscode_launch/close lifecycle and `@playwright/mcp`'s contextGetter
+- New upstream tools available: `browser_fill_form`, `browser_select_option`, `browser_run_code`, `browser_network_requests`, `browser_mouse_down`, `browser_mouse_up`, `browser_mouse_wheel`
+
+### Removed
+- Deleted tool handler files delegated to upstream: `keyboard.ts`, `evaluate.ts`, `wait-for.ts`, `console.ts`
+- Removed `handleScreenshot`, `handleSnapshot`, `handleResize`, `handleClick`, `handleHover`, `handleDrag`, `handleType`, `handlePressKey` from our codebase
+
+### Previously Added
 - `vscode_resize` tool: resize the VS Code viewport on the fly (min 200x200, max 3840x2160) for responsive layout testing
 - `vscode_zoom` tool: capture a cropped screenshot of a specific region for closer inspection of small UI details, Monaco editor text, or status bar items
 - `vscode_find_element` tool: search the accessibility tree by role and/or name with case-insensitive partial matching — returns matching elements with `[ref=eN]` for immediate use with `vscode_click` or `vscode_hover`

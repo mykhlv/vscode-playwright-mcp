@@ -5,7 +5,7 @@
 
 import { writeFile } from 'node:fs/promises';
 import { resolve, isAbsolute } from 'node:path';
-import type { Page } from 'playwright-core';
+import type { Page } from 'playwright';
 import { ErrorCode, ToolError } from '../types/errors.js';
 
 /** Minimal type for the gifenc GIFEncoder instance (no upstream types available). */
