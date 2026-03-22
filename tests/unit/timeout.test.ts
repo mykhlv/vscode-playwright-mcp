@@ -19,12 +19,9 @@ describe('withTimeout', () => {
   it('rejects with TIMEOUT error when promise exceeds timeout', async () => {
     const slow = new Promise((resolve) => setTimeout(resolve, 5000));
 
-    await expect(
-      withTimeout(slow, 50, 'slow_op'),
-    ).rejects.toThrow(ToolError);
-
     try {
       await withTimeout(slow, 50, 'slow_op');
+      expect.fail('Should have thrown ToolError');
     } catch (error) {
       expect(error).toBeInstanceOf(ToolError);
       const toolError = error as ToolError;
@@ -47,6 +44,7 @@ describe('withTimeout', () => {
 
     try {
       await withTimeout(slow, 50, 'vscode_screenshot');
+      expect.fail('Should have thrown ToolError');
     } catch (error) {
       expect((error as ToolError).actionable).toContain('vscode_screenshot');
       expect((error as ToolError).actionable).toContain('vscode_close');

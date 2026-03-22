@@ -29,9 +29,11 @@ export async function handleConsole(
   // Verify session is active
   session.getPage();
 
-  let messages = session.consoleCollector.getMessages(params.level);
+  const allMessages = session.consoleCollector.getMessages(params.level);
+  const totalCount = allMessages.length;
 
   // Apply limit — take the most recent N messages
+  let messages = allMessages;
   if (params.limit !== undefined && params.limit > 0 && messages.length > params.limit) {
     messages = messages.slice(-params.limit);
   }
@@ -54,6 +56,14 @@ export async function handleConsole(
     (m) => `[${formatTimestamp(m.timestamp)}] [${m.level}] ${m.text}`,
   );
 
-  const clearNote = params.clear ? ' (buffer cleared)' : '';
+  let clearNote = '';
+  if (params.clear) {
+    const discarded = totalCount - messages.length;
+    if (discarded > 0) {
+      clearNote = ` (buffer cleared — ${discarded} older messages not shown were also discarded)`;
+    } else {
+      clearNote = ' (buffer cleared)';
+    }
+  }
   return textResult(`Console messages (${messages.length})${clearNote}:\n${lines.join('\n')}`);
 }

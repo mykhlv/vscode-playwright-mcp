@@ -95,6 +95,10 @@ describe.skipIf(!canRun)('vision', { timeout: 120_000 }, () => {
   });
 
   it('snapshot with max_depth=1 returns fewer lines than max_depth=8', { timeout: TEST_TIMEOUT }, async () => {
+    // VS Code needs time to fully render its UI before the a11y tree is populated
+    const page = session.getPage();
+    await page.waitForTimeout(2000);
+
     const shallowText = assertText(await handleSnapshot(session, { max_depth: 1 }));
     const deepText = assertText(await handleSnapshot(session, { max_depth: 8 }));
 

@@ -11,7 +11,7 @@ export interface TextResult {
 export interface ImageResult {
   type: 'image';
   data: string;       // base64-encoded image
-  mimeType: string;   // "image/jpeg" or "image/png"
+  mimeType: 'image/jpeg' | 'image/png';
   metadata: string;   // Human-readable summary (dimensions, size, etc.)
 }
 

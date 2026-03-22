@@ -39,10 +39,6 @@ describe.skipIf(!canRun)('interaction', { timeout: 120_000 }, () => {
   });
 
   it('click with out-of-bounds coordinates throws validation error', { timeout: TEST_TIMEOUT }, async () => {
-    await expect(
-      handleClick(session, { x: 9999, y: 9999 }),
-    ).rejects.toThrow(ToolError);
-
     try {
       await handleClick(session, { x: 9999, y: 9999 });
       expect.unreachable('Expected click to throw');

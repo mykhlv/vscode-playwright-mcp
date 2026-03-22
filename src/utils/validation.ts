@@ -20,7 +20,7 @@ export function validateCoordinates(
     );
   }
 
-  if (x < 0 || y < 0 || x > viewport.width || y > viewport.height) {
+  if (x < 0 || y < 0 || x >= viewport.width || y >= viewport.height) {
     throw new ToolError(
       ErrorCode.INVALID_COORDINATES,
       `Coordinates (${x}, ${y}) are outside window bounds (${viewport.width}x${viewport.height}). Use vscode_screenshot to see the current window.`,
@@ -62,6 +62,12 @@ export function validateRegion(
   if (!region) return;
 
   const { x, y, width, height } = region;
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) {
+    throw new ToolError(
+      ErrorCode.INVALID_INPUT,
+      `Screenshot region values must be finite numbers. Got {x:${x}, y:${y}, width:${width}, height:${height}}.`,
+    );
+  }
   if (x < 0 || y < 0 || width <= 0 || height <= 0) {
     throw new ToolError(
       ErrorCode.INVALID_INPUT,

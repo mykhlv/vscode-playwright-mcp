@@ -237,7 +237,7 @@ export async function handleDrag(
   try {
     await page.mouse.move(params.end_x, params.end_y, { steps: 10 });
   } finally {
-    await page.mouse.up();
+    try { await page.mouse.up(); } catch { /* prevent masking original error */ }
   }
 
   return textResult(

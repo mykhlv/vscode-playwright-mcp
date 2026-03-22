@@ -45,6 +45,12 @@ export class SessionManager {
         'VS Code instance is unresponsive (previous tool call timed out). Call vscode_close first, then vscode_launch to recover.',
       );
     }
+    if (this.stateMachine.state === SessionState.CRASHED) {
+      throw new ToolError(
+        ErrorCode.SESSION_CRASHED,
+        'VS Code instance has crashed. Call vscode_close to clean up, then vscode_launch to start a new session.',
+      );
+    }
     if (!this.page || !this.stateMachine.isReady) {
       throw new ToolError(
         ErrorCode.NO_SESSION,
@@ -155,8 +161,17 @@ export class SessionManager {
    * Gracefully close the running VS Code instance.
    */
   async close(): Promise<void> {
-    if (this.stateMachine.state === SessionState.IDLE) {
-      return; // Already closed, idempotent
+    if (this.stateMachine.state === SessionState.IDLE || this.stateMachine.state === SessionState.CLOSING) {
+      return; // Already closed or closing, idempotent
+    }
+
+    if (this.stateMachine.state === SessionState.LAUNCHING) {
+      // Close called while launch is still in progress — force cleanup.
+      // The in-flight launchPromise may still resolve; its orphan-cleanup
+      // handler in launch() will take care of killing the process.
+      logger.warn('close_during_launch', { state: this.stateMachine.state });
+      await this.forceCleanup();
+      return;
     }
 
     if (this.stateMachine.state === SessionState.CRASHED || this.stateMachine.state === SessionState.ERROR) {

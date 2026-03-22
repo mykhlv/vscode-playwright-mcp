@@ -41,7 +41,7 @@ export class ConsoleCollector {
     page.on('console', this.listener);
   }
 
-  detach(_page?: Page): void {
+  detach(): void {
     if (this.listener && this.attachedPage) {
       this.attachedPage.removeListener('console', this.listener);
       this.listener = null;

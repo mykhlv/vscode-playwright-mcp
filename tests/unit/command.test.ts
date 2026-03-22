@@ -83,11 +83,7 @@ describe('handleRunCommand', () => {
   it('dismisses palette with Escape when no match found', async () => {
     const { session, actions } = createMockSession({ hasRows: false });
 
-    try {
-      await handleRunCommand(session, { command: 'noSuchCommand' });
-    } catch {
-      // expected
-    }
+    await expect(handleRunCommand(session, { command: 'noSuchCommand' })).rejects.toThrow();
 
     expect(actions).toContain('press:Escape');
     // Should NOT press Enter

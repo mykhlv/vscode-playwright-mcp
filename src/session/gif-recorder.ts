@@ -111,8 +111,6 @@ export type CaptureMode = 'auto' | 'manual';
 export class GifRecorder {
   private frames: Frame[] = [];
   private recording = false;
-  /** Set to true if frames were ever halved (safety fallback). */
-  private halved = false;
   private _captureMode: CaptureMode = 'auto';
 
   get isRecording(): boolean {
@@ -133,7 +131,6 @@ export class GifRecorder {
    */
   startRecording(captureMode: CaptureMode = 'auto'): void {
     this.frames = [];
-    this.halved = false;
     this._captureMode = captureMode;
     this.recording = true;
     logger.info('gif_recording_started', { captureMode });
@@ -198,9 +195,6 @@ export class GifRecorder {
     const { GIFEncoder, quantize, applyPalette } = await loadGifenc();
     const encoder = GIFEncoder();
 
-    /** Fixed delay used as safety fallback if frames were ever halved */
-    const HALVED_FIXED_DELAY_MS = 500;
-
     for (let i = 0; i < this.frames.length; i++) {
       const frame = this.frames[i]!;
       const parsed = PNG.sync.read(frame.png);
@@ -227,9 +221,6 @@ export class GifRecorder {
       let delay: number;
       if (frameDelay != null) {
         delay = Math.max(MIN_FRAME_DELAY_MS, Math.min(MAX_FRAME_DELAY_MS, frameDelay));
-      } else if (this.halved) {
-        // After halving, timestamp-based delays are meaningless — use a fixed delay
-        delay = HALVED_FIXED_DELAY_MS;
       } else if (i < this.frames.length - 1) {
         delay = this.frames[i + 1]!.timestamp - frame.timestamp;
         delay = Math.max(MIN_FRAME_DELAY_MS, Math.min(MAX_FRAME_DELAY_MS, delay));

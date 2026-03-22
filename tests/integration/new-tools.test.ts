@@ -5,7 +5,7 @@
  * against the live window.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { SessionManager } from '../../src/session/session-manager.js';
 import {
   handleScreenshot, handleSnapshot, handleResize, handleZoom, handleFindElement,
@@ -42,6 +42,11 @@ describe.skipIf(!canRun)('new-tools', { timeout: 120_000 }, () => {
   // --- vscode_resize ---
 
   describe('vscode_resize', () => {
+    afterEach(async () => {
+      // Always restore viewport to default so subsequent tests are not affected
+      try { await handleResize(session, { width: 1280, height: 720 }); } catch { /* ignore */ }
+    });
+
     it('resizes viewport and reports new dimensions', { timeout: TEST_TIMEOUT }, async () => {
       const text = assertText(await handleResize(session, { width: 800, height: 600 }));
       expect(text).toContain('800x600');
@@ -52,6 +57,8 @@ describe.skipIf(!canRun)('new-tools', { timeout: 120_000 }, () => {
     });
 
     it('restores to original viewport', { timeout: TEST_TIMEOUT }, async () => {
+      // First resize away from default to verify restore works
+      await handleResize(session, { width: 800, height: 600 });
       const text = assertText(await handleResize(session, { width: 1280, height: 720 }));
       expect(text).toContain('1280x720');
     });
@@ -66,9 +73,7 @@ describe.skipIf(!canRun)('new-tools', { timeout: 120_000 }, () => {
       const text = assertText(await handleSnapshot(session, {}));
       expect(text).toContain('Accessibility snapshot');
       expect(text.length).toBeGreaterThan(20);
-
-      // Restore
-      await handleResize(session, { width: 1280, height: 720 });
+      // afterEach restores viewport
     });
 
     it('rejects dimensions below minimum', { timeout: TEST_TIMEOUT }, async () => {
@@ -202,7 +207,7 @@ describe.skipIf(!canRun)('new-tools', { timeout: 120_000 }, () => {
 
       const text = assertText(await handleFindElement(session, { role: 'button' }));
       // Extract all refs and try clicking the first one that succeeds
-      const refs = [...text.matchAll(/\[ref=(e\d+)\]/g)].map(m => m[1]);
+      const refs = [...text.matchAll(/\[ref=(e\d+)\]/g)].map((m) => m[1]);
       if (refs.length === 0) return;
 
       let clicked = false;
@@ -237,18 +242,20 @@ describe.skipIf(!canRun)('new-tools', { timeout: 120_000 }, () => {
       const page = session.getPage();
       await page.waitForTimeout(500);
 
-      // Find a button
-      const text = assertText(await handleFindElement(session, { role: 'button' }));
-      const refMatch = text.match(/\[ref=(e\d+)\]/);
+      try {
+        // Find a button
+        const text = assertText(await handleFindElement(session, { role: 'button' }));
+        const refMatch = text.match(/\[ref=(e\d+)\]/);
 
-      if (refMatch) {
-        // Click it — should work at the new viewport size
-        const clickResult = assertText(await handleClick(session, { ref: refMatch[1] }));
-        expect(clickResult).toContain('Clicked');
+        if (refMatch) {
+          // Click it — should work at the new viewport size
+          const clickResult = assertText(await handleClick(session, { ref: refMatch[1] }));
+          expect(clickResult).toContain('Clicked');
+        }
+      } finally {
+        // Restore viewport even if assertions fail
+        await handleResize(session, { width: 1280, height: 720 });
       }
-
-      // Restore viewport
-      await handleResize(session, { width: 1280, height: 720 });
     });
 
     it('zoom captures actual UI content (non-empty image)', { timeout: TEST_TIMEOUT }, async () => {

@@ -102,14 +102,17 @@ describe('handleEvaluate', () => {
 
   it('times out when expression hangs', async () => {
     vi.useFakeTimers();
-    const session = createHangingSession();
-    const promise = handleEvaluate(session, { expression: 'while(true){}', timeout: 100 });
+    try {
+      const session = createHangingSession();
+      const promise = handleEvaluate(session, { expression: 'while(true){}', timeout: 100 });
 
-    // Advance past the timeout
-    vi.advanceTimersByTime(150);
+      // Advance past the timeout
+      vi.advanceTimersByTime(150);
 
-    await expect(promise).rejects.toThrow(/timed out after 100ms/);
-    vi.useRealTimers();
+      await expect(promise).rejects.toThrow(/timed out after 100ms/);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('rejects timeout <= 0', async () => {

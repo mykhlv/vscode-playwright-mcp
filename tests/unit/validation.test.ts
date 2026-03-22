@@ -15,7 +15,7 @@ describe('validateCoordinates', () => {
   it('accepts valid coordinates', () => {
     expect(() => validateCoordinates(0, 0, viewport)).not.toThrow();
     expect(() => validateCoordinates(640, 360, viewport)).not.toThrow();
-    expect(() => validateCoordinates(1280, 720, viewport)).not.toThrow();
+    expect(() => validateCoordinates(1279, 719, viewport)).not.toThrow();
   });
 
   it('rejects negative coordinates', () => {
@@ -23,7 +23,9 @@ describe('validateCoordinates', () => {
     expect(() => validateCoordinates(0, -1, viewport)).toThrow(ToolError);
   });
 
-  it('rejects coordinates beyond viewport', () => {
+  it('rejects coordinates at or beyond viewport edge', () => {
+    expect(() => validateCoordinates(1280, 0, viewport)).toThrow(ToolError);
+    expect(() => validateCoordinates(0, 720, viewport)).toThrow(ToolError);
     expect(() => validateCoordinates(1281, 0, viewport)).toThrow(ToolError);
     expect(() => validateCoordinates(0, 721, viewport)).toThrow(ToolError);
   });
@@ -36,6 +38,7 @@ describe('validateCoordinates', () => {
   it('includes viewport dimensions in error message', () => {
     try {
       validateCoordinates(1500, 900, viewport);
+      expect.fail('Should have thrown ToolError');
     } catch (e) {
       expect((e as ToolError).actionable).toContain('1280x720');
       expect((e as ToolError).code).toBe('INVALID_COORDINATES');
@@ -95,6 +98,11 @@ describe('validateRegion', () => {
   it('rejects regions with non-positive dimensions', () => {
     expect(() => validateRegion({ x: 0, y: 0, width: 0, height: 100 }, viewport)).toThrow(ToolError);
     expect(() => validateRegion({ x: 0, y: 0, width: 100, height: -1 }, viewport)).toThrow(ToolError);
+  });
+
+  it('rejects regions with non-finite values', () => {
+    expect(() => validateRegion({ x: NaN, y: 0, width: 100, height: 100 }, viewport)).toThrow(ToolError);
+    expect(() => validateRegion({ x: 0, y: 0, width: Infinity, height: 100 }, viewport)).toThrow(ToolError);
   });
 
   it('rejects regions that exceed viewport', () => {

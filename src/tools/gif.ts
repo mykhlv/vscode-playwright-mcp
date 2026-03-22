@@ -8,11 +8,13 @@ import type { GifRecorder } from '../session/gif-recorder.js';
 import type { GifParams } from '../types/tool-params.js';
 import { type ToolResult, textResult } from '../types/tool-results.js';
 import { ErrorCode, ToolError } from '../types/errors.js';
+import { logger } from '../utils/logger.js';
 
 export async function handleGif(
   recorder: GifRecorder,
   params: GifParams,
 ): Promise<ToolResult> {
+  logger.info('tool_call', { tool: 'vscode_gif', action: params.action });
   switch (params.action) {
     case 'start': {
       const captureMode = params.capture_on ?? 'auto';

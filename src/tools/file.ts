@@ -60,6 +60,10 @@ export async function handleEnsureFile(
   const quickOpenShortcut = process.platform === 'darwin' ? 'Meta+KeyP' : 'Control+KeyP';
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    // Dismiss any existing overlays to prevent toggle-off behavior
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(100);
+
     // Open Quick Open
     await withRetry(
       () => page.keyboard.press(quickOpenShortcut),

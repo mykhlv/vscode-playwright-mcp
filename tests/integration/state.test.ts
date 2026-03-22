@@ -66,6 +66,11 @@ describe.skipIf(!canRun)('state', { timeout: 120_000 }, () => {
       await handleRunCommand(session, { command: 'xyzzy_nonexistent_command_12345' }),
     );
     expect(text).toContain('Executed command');
+
+    // Dismiss any leftover Command Palette to avoid contaminating later tests
+    const page = session.getPage();
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
   });
 
   it('get_hover with no tooltip returns guidance message', { timeout: TEST_TIMEOUT }, async () => {

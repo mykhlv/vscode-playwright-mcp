@@ -27,6 +27,12 @@ export async function handleRunCommand(
 
   const page = session.getPage();
 
+  // Dismiss any existing overlays (e.g., a previously open Command Palette).
+  // Pressing Meta+Shift+P when the palette is already open would close it,
+  // causing the typed command text to go into the editor and corrupt the file.
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(100);
+
   // Open Command Palette (Meta on macOS, Control on Linux/Windows)
   const commandPaletteShortcut = process.platform === 'darwin' ? 'Meta+Shift+KeyP' : 'Control+Shift+KeyP';
   await withRetry(
