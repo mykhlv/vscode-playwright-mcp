@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { Page, ConsoleMessage } from 'playwright-core';
-import { ConsoleCollector, MAX_MESSAGES } from '../../src/session/console-collector.js';
+import { ConsoleCollector, MAX_MESSAGES, TRIM_AMOUNT } from '../../src/session/console-collector.js';
 
 /** Create a minimal mock Page that tracks event listeners. */
 function createMockPage() {
@@ -78,18 +78,20 @@ describe('ConsoleCollector', () => {
     expect(mockPage.getListeners('console')).toHaveLength(1);
   });
 
-  it('trims buffer when exceeding MAX_MESSAGES without throwing', () => {
+  it('trims buffer when exceeding MAX_MESSAGES', () => {
     collector.attach(mockPage as unknown as Page);
 
     // Push MAX_MESSAGES + 1 messages to trigger trim.
-    // The internal buffer is private, so we verify the trim path
-    // runs without throwing and the collector remains functional.
     for (let i = 0; i <= MAX_MESSAGES; i++) {
       mockPage.emit('console', createMockMessage('log', `msg-${i}`));
     }
 
+    // After trim: (MAX_MESSAGES + 1) pushed, then TRIM_AMOUNT dropped
+    expect(collector.messageCount).toBe(MAX_MESSAGES + 1 - TRIM_AMOUNT);
+
     // After trim, new messages should still be collected without error
     mockPage.emit('console', createMockMessage('log', 'after-trim'));
+    expect(collector.messageCount).toBe(MAX_MESSAGES + 1 - TRIM_AMOUNT + 1);
 
     // Listener should still be active (1 listener registered)
     expect(mockPage.getListeners('console')).toHaveLength(1);

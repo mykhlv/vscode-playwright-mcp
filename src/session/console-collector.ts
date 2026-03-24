@@ -7,7 +7,7 @@ import type { Page, ConsoleMessage } from 'playwright';
 import { logger } from '../utils/logger.js';
 
 export const MAX_MESSAGES = 10_000;
-const TRIM_AMOUNT = 1_000;
+export const TRIM_AMOUNT = 1_000;
 
 interface CollectedMessage {
   level: string;
@@ -39,6 +39,11 @@ export class ConsoleCollector {
       }
     };
     page.on('console', this.listener);
+  }
+
+  /** Number of messages currently buffered. */
+  get messageCount(): number {
+    return this.messages.length;
   }
 
   detach(): void {

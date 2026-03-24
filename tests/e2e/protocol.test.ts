@@ -68,7 +68,8 @@ describe('MCP protocol', () => {
     const { tools } = await client.listTools();
 
     for (const tool of tools) {
-      expect(tool.description).toBeTruthy();
+      expect(typeof tool.description).toBe('string');
+      expect(tool.description!.length).toBeGreaterThan(0);
       expect(tool.inputSchema).toBeDefined();
       expect(tool.inputSchema.type).toBe('object');
     }
@@ -92,7 +93,7 @@ describe('MCP protocol', () => {
     const result = await callTool(client, 'vscode_close');
 
     // close() is idempotent — succeeds even with no session
-    expect(result.isError).toBeFalsy();
+    expect(result.isError).toBe(undefined);
     const text = getTextContent(result);
     expect(text).toContain('closed');
   });

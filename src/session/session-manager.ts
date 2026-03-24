@@ -143,6 +143,7 @@ export class SessionManager {
               error: String(err),
             });
           }
+          this.consoleCollector.detach();
           this.app = null;
           this.page = null;
         }

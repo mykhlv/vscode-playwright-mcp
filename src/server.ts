@@ -2,7 +2,7 @@
  * MCP server setup: composites @playwright/mcp browser tools with our VS Code-specific tools.
  *
  * Architecture:
- * 1. createConnection() from @playwright/mcp registers ~28 browser_* tools on a raw Server
+ * 1. createConnection() from @playwright/mcp registers 28 browser_* tools on a raw Server
  * 2. We intercept the Server's tools/list and tools/call handlers
  * 3. tools/list → filter irrelevant tools, alias browser_* → vscode_*, append our tools
  * 4. tools/call → resolve vscode_* aliases back to browser_*, route to handlers
@@ -207,17 +207,16 @@ export async function createServer() {
 
   // Track whether client supports listChanged (heuristic: if they re-request after notification)
   let clientSupportsListChanged = false;
-  let listRequestCount = 0;
+  let hasListedToolsBefore = false;
 
   // ── Intercept tools/list ───────────────────────────────────
   handlers.set('tools/list', async (request, extra) => {
-    listRequestCount++;
-
     // Heuristic: if client re-requests after we sent a list_changed notification,
     // it likely supports dynamic tool discovery. Only then do we enable lazy mode.
-    if (listRequestCount > 1 && listChangedSent) {
+    if (hasListedToolsBefore && listChangedSent) {
       clientSupportsListChanged = true;
     }
+    hasListedToolsBefore = true;
 
     // Lazy discovery: before launch, only show vscode_launch
     // But only if client supports list_changed (otherwise show all upfront)
