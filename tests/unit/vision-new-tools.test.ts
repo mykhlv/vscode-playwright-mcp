@@ -104,7 +104,7 @@ describe('handleFindElement', () => {
     const result = await handleFindElement(session, { role: 'menuitem' });
     const text = (result as { text: string }).text;
     expect(text).toContain('No elements found');
-    expect(text).toContain('browser_snapshot');
+    expect(text).toContain('vscode_snapshot');
   });
 
   it('respects max_results', async () => {

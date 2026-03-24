@@ -142,7 +142,7 @@ export async function handleFindElement(
       params.name && `name="${params.name}"`,
     ].filter(Boolean).join(', ');
     return textResult(
-      `No elements found matching ${criteria}. Use browser_snapshot to see all available elements.`,
+      `No elements found matching ${criteria}. Use vscode_snapshot to see all available elements.`,
     );
   }
 

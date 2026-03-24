@@ -185,7 +185,11 @@ export async function launchVSCode(config: LaunchConfig): Promise<LaunchResult> 
 
   // User-provided additional args (with blocklist for dangerous flags)
   if (config.args) {
-    const BLOCKED_ARGS = ['--remote-debugging-port', '--inspect', '--inspect-brk', '--inspect-port', '--js-flags'];
+    const BLOCKED_ARGS = [
+      '--remote-debugging-port', '--inspect', '--inspect-brk', '--inspect-port', '--js-flags',
+      '--disable-web-security', '--allow-running-insecure-content', '--no-sandbox',
+      '--load-extension', '--disable-features',
+    ];
     for (const arg of config.args) {
       if (BLOCKED_ARGS.some((blocked) => arg.startsWith(blocked))) {
         throw new ToolError(

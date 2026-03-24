@@ -28,12 +28,12 @@ export async function handleRunCommand(
 
   validateNonEmptyString(params.command, 'command');
 
-  params.command = params.command.trim();
+  const command = params.command.trim();
 
-  if (params.command.length > MAX_COMMAND_LENGTH) {
+  if (command.length > MAX_COMMAND_LENGTH) {
     throw new ToolError(
       ErrorCode.INVALID_INPUT,
-      `Command string too long (${params.command.length} chars, max ${MAX_COMMAND_LENGTH}). ` +
+      `Command string too long (${command.length} chars, max ${MAX_COMMAND_LENGTH}). ` +
       'Use the exact command label from the Command Palette, not arbitrary text.',
     );
   }
@@ -57,7 +57,7 @@ export async function handleRunCommand(
   await page.waitForTimeout(200);
 
   // Type the command name
-  await page.keyboard.type(params.command, { delay: 0 });
+  await page.keyboard.type(command, { delay: 0 });
 
   // Brief delay for filtering to settle
   await page.waitForTimeout(200);
@@ -88,7 +88,7 @@ export async function handleRunCommand(
     await page.keyboard.press('Escape');
     throw new ToolError(
       ErrorCode.COMMAND_NOT_FOUND,
-      `Command not found: "${params.command}". No matching command in Command Palette. ` +
+      `Command not found: "${command}". No matching command in Command Palette. ` +
       'Use the exact command label (e.g. "Go to Line" not "goToLine"). ' +
       'Use vscode_snapshot on the Command Palette to see available commands.',
     );
@@ -115,13 +115,13 @@ export async function handleRunCommand(
   // that the wrong command may have been selected — no extra round-trip needed.
   if (topMatch) {
     return textResult(
-      `Executed top Command Palette match "${topMatch}" (query: "${params.command}")${inputDesc}. ` +
+      `Executed top Command Palette match "${topMatch}" (query: "${command}")${inputDesc}. ` +
       'Verify with vscode_screenshot or vscode_get_state if the result is unclear.',
     );
   }
 
   return textResult(
-    `Executed command "${params.command}"${inputDesc} via Command Palette. ` +
+    `Executed command "${command}"${inputDesc} via Command Palette. ` +
     'Verify with vscode_screenshot or vscode_get_state if the result is unclear.',
   );
 }

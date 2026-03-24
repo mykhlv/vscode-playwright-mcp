@@ -401,7 +401,7 @@ export async function handleGetState(
   let state: EditorState | null = null;
 
   if (params.wait_for_diagnostics) {
-    const timeoutMs = params.timeout ?? 5000;
+    const timeoutMs = Math.min(params.timeout ?? 5000, 30000);
     const pollInterval = 500;
     const deadline = Date.now() + timeoutMs;
 
@@ -577,7 +577,7 @@ export async function handleGetHover(
 
   if (!result.found || !result.text) {
     return textResult(
-      'No hover tooltip visible. Use browser_hover first to trigger a tooltip at specific coordinates, then call vscode_get_hover to read it.',
+      'No hover tooltip visible. Use vscode_hover first to trigger a tooltip at specific coordinates, then call vscode_get_hover to read it.',
     );
   }
 

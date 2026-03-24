@@ -32,7 +32,14 @@ function emit(level: LogLevel, msg: string, data?: Record<string, unknown>): voi
     msg,
   };
 
-  process.stderr.write(JSON.stringify(entry) + '\n');
+  let line: string;
+  try {
+    line = JSON.stringify(entry);
+  } catch {
+    // Fallback for circular references or non-serializable data
+    line = JSON.stringify({ ts: Date.now(), level, msg });
+  }
+  process.stderr.write(line + '\n');
 }
 
 export const logger = {

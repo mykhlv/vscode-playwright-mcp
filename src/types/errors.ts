@@ -35,14 +35,13 @@ export const ErrorCode = {
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
 export class ToolError extends Error {
-  readonly code: ErrorCode;
-  readonly actionable: string;
-
-  constructor(code: ErrorCode, actionable: string) {
-    super(actionable);
+  constructor(
+    public readonly code: ErrorCode,
+    public readonly actionable: string,
+    options?: { cause?: unknown },
+  ) {
+    super(actionable, options ? { cause: options.cause } : undefined);
     this.name = 'ToolError';
-    this.code = code;
-    this.actionable = actionable;
   }
 
   /** Format for MCP error response — LLM sees this directly */

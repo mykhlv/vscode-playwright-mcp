@@ -50,7 +50,7 @@ export function createVSCodeTools(
         'Launch a new VS Code instance with an isolated environment. ' +
         'Creates a temporary user-data-dir for state isolation. ' +
         'Optionally load an extension from source (extension_development_path) or install .vsix files. ' +
-        'After launch, browser_* tools become available for interacting with the UI.',
+        'After launch, vscode_* tools become available for interacting with the UI.',
       inputSchema: zodToJsonSchema(z.object({
         workspace: z.string().optional()
           .describe('Absolute path to a folder or .code-workspace file to open.'),
@@ -65,8 +65,8 @@ export function createVSCodeTools(
         args: z.array(z.string()).optional()
           .describe('Additional CLI arguments to pass to VS Code.'),
         viewport: z.object({
-          width: z.number(),
-          height: z.number(),
+          width: z.number().int().min(200).max(7680),
+          height: z.number().int().min(200).max(4320),
         }).optional()
           .describe('Viewport size in logical pixels. Default: { width: 1280, height: 720 }.'),
       })),
@@ -141,7 +141,7 @@ export function createVSCodeTools(
       name: 'vscode_get_hover',
       description:
         'Read the content of a visible hover tooltip as text. ' +
-        'Must be called AFTER browser_hover has triggered a tooltip. ' +
+        'Must be called AFTER vscode_hover has triggered a tooltip. ' +
         'Returns the hover text without needing a screenshot.',
       inputSchema: zodToJsonSchema(z.object({})),
       timeoutMs: 5_000,
@@ -186,8 +186,8 @@ export function createVSCodeTools(
       name: 'vscode_find_element',
       description:
         'Search the accessibility tree for elements matching a role and/or name filter. ' +
-        'Returns matching lines with [ref=eN] annotations — use refs with browser_click or browser_hover. ' +
-        'Faster than browser_snapshot when you know what you\'re looking for.',
+        'Returns matching lines with [ref=eN] annotations — use refs with vscode_click or vscode_hover. ' +
+        'Faster than vscode_snapshot when you know what you\'re looking for.',
       inputSchema: zodToJsonSchema(z.object({
         role: z.string().optional()
           .describe('ARIA role to filter by (case-insensitive, exact match). Examples: "button", "tab", "textbox".'),
@@ -245,7 +245,7 @@ export function createVSCodeTools(
         progress_bar: z.boolean().optional().describe('Show progress bar at bottom. Default: false.'),
         capture_on: z.enum(['auto', 'manual']).optional().describe(
           'Frame capture mode for "start". "auto" (default): auto after visual tools. ' +
-          '"manual": only on browser_take_screenshot.',
+          '"manual": only on vscode_screenshot.',
         ),
       })),
       timeoutMs: 5_000,

@@ -53,6 +53,10 @@ export async function captureScreenshot(
     width = options.region.width;
     height = options.region.height;
   } else {
+    // viewportSize() returns undefined for Electron windows until the viewport
+    // is set explicitly. The launcher already does this after Electron launch,
+    // so the fallback to DEFAULT_VIEWPORT should only apply if called before
+    // the viewport has been configured (which is not expected in normal flow).
     const viewport = page.viewportSize();
     width = viewport?.width ?? DEFAULT_VIEWPORT.width;
     height = viewport?.height ?? DEFAULT_VIEWPORT.height;

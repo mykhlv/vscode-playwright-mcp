@@ -237,6 +237,10 @@ export async function createServer() {
     // Route native vscode_* tools to our handlers
     const nativeTool = nativeToolMap.get(toolName);
     if (nativeTool) {
+      // Guard: native tools (except launch/close) require a running VS Code session
+      if (toolName !== 'vscode_launch' && toolName !== 'vscode_close' && !bridge.isProvided) {
+        return mcpError(`No VS Code instance is running. Call vscode_launch first, then use ${toolName}.`);
+      }
       try {
         const userTimeout = typeof args['timeout'] === 'number' ? args['timeout'] : 0;
         const effectiveTimeout = Math.max(nativeTool.timeoutMs, userTimeout + 5_000);
@@ -367,6 +371,8 @@ const SESSION_CLOSED_PATTERNS = [
   'Browser has been closed',
   'Protocol error',
   'Connection closed',
+  'Execution context was destroyed',
+  'frame was detached',
 ];
 
 /**

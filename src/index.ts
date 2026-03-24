@@ -6,6 +6,12 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createServer } from './server.js';
 import { setLogLevel, logger } from './utils/logger.js';
 
+// Ensure clean shutdown on signals even before SessionManager installs its own hooks.
+// SessionManager's installShutdownHooks() (cleanup.ts) replaces these with richer
+// handlers that also kill orphan VS Code processes and remove temp dirs.
+process.on('SIGINT', () => process.exit(0));
+process.on('SIGTERM', () => process.exit(0));
+
 function parseArgs(): { verbose: boolean; vscodePath?: string } {
   const args = process.argv.slice(2);
   let verbose = false;

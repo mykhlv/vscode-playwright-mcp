@@ -3,9 +3,12 @@
  *
  * States:
  *   IDLE -> LAUNCHING -> READY -> CLOSING -> IDLE
- *                |          |          |
- *                +-> ERROR  +-> CRASHED +-> FORCE_KILL -> IDLE
- *                           +-> UNRESPONSIVE -> IDLE
+ *              |  |        |  |
+ *              |  +-> IDLE |  +-> CRASHED -------> IDLE
+ *              |           |
+ *              +-> ERROR --+-> UNRESPONSIVE -> CLOSING
+ *                     |               |
+ *                     +-> IDLE        +-> IDLE
  */
 
 export const SessionState = {

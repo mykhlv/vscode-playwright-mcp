@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "@playwright/mcp": "^0.0.68",
+    "@playwright/mcp": "0.0.68",
     "gifenc": "^1.0.3",
     "pngjs": "^7.0.0",
     "zod": "^4.3.6"
