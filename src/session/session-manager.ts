@@ -36,9 +36,10 @@ export class SessionManager {
   }
 
   /**
-   * Get the active Playwright Page. Throws if no session is active.
+   * Verify the session is in a usable state. Throws with an actionable
+   * message if it is unresponsive, crashed, or not yet launched.
    */
-  getPage(): Page {
+  private ensureReady(): void {
     if (this.stateMachine.state === SessionState.UNRESPONSIVE) {
       throw new ToolError(
         ErrorCode.SESSION_UNRESPONSIVE,
@@ -51,11 +52,33 @@ export class SessionManager {
         'VS Code instance has crashed. Call vscode_close to clean up, then vscode_launch to start a new session.',
       );
     }
-    if (!this.page || !this.stateMachine.isReady) {
+    if (!this.stateMachine.isReady) {
       throw new ToolError(
         ErrorCode.NO_SESSION,
         'No VS Code instance is running. Call vscode_launch first.',
       );
+    }
+  }
+
+  /**
+   * Get the active ElectronApplication. Throws if no session is active.
+   * Needed for Electron-specific operations like window resize via BrowserWindow.
+   */
+  getApp(): ElectronApplication {
+    this.ensureReady();
+    if (!this.app) {
+      throw new ToolError(ErrorCode.NO_SESSION, 'No VS Code instance is running. Call vscode_launch first.');
+    }
+    return this.app;
+  }
+
+  /**
+   * Get the active Playwright Page. Throws if no session is active.
+   */
+  getPage(): Page {
+    this.ensureReady();
+    if (!this.page) {
+      throw new ToolError(ErrorCode.NO_SESSION, 'No VS Code instance is running. Call vscode_launch first.');
     }
     return this.page;
   }

@@ -35,7 +35,6 @@ const BROWSER_TO_VSCODE: Record<string, string> = {
   browser_press_key:         'vscode_press_key',
   browser_hover:             'vscode_hover',
   browser_drag:              'vscode_drag',
-  browser_resize:            'vscode_resize',
   browser_evaluate:          'vscode_evaluate',
   browser_wait_for:          'vscode_wait_for',
   browser_console_messages:  'vscode_console',
@@ -59,6 +58,7 @@ const DESCRIPTION_OVERRIDES: Record<string, string> = {
 
 /** Browser tools to filter out completely (nonsensical for VS Code Electron). */
 const FILTERED_BROWSER_TOOLS = new Set([
+  'browser_resize',          // Superseded by native vscode_resize (Electron BrowserWindow resize)
   'browser_close',           // Must use vscode_close for cleanup (temp dirs, PIDs, state)
   'browser_navigate',        // No URL navigation in Electron
   'browser_navigate_back',   // No navigation history
@@ -78,7 +78,7 @@ const SKIP_GIF_CAPTURE = new Set([
   // Our native tools
   'vscode_gif', 'vscode_launch', 'vscode_close',
   'vscode_get_hover', 'vscode_get_state',
-  'vscode_zoom', 'vscode_find_element',
+  'vscode_zoom', 'vscode_find_element', 'vscode_resize',
   // Aliased upstream read-only tools (use vscode_* names since that's what we route)
   'vscode_snapshot', 'vscode_console',
   'vscode_evaluate', 'vscode_wait_for',

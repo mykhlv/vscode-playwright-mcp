@@ -13,7 +13,7 @@ import type {
   RunCommandParams, GetStateParams, GetHoverParams,
   EnsureFileParams, GifParams,
   ZoomParams, FindElementParams,
-  ScrollParams,
+  ScrollParams, ResizeParams,
 } from '../types/tool-params.js';
 import { handleLaunch, handleClose } from './launch.js';
 import { handleZoom, handleFindElement } from './vision.js';
@@ -22,6 +22,7 @@ import { handleRunCommand } from './command.js';
 import { handleGetState, handleGetHover } from './state.js';
 import { handleEnsureFile } from './file.js';
 import { handleGif } from './gif.js';
+import { handleResize } from './resize.js';
 
 export interface VSCodeToolDefinition {
   name: string;
@@ -215,6 +216,20 @@ export function createVSCodeTools(
       })),
       timeoutMs: 5_000,
       handler: (params) => handleScroll(session, params as unknown as ScrollParams),
+    },
+
+    // ── Window Management ─────────────────────────────────────
+    {
+      name: 'vscode_resize',
+      description:
+        'Resize the VS Code window to the specified dimensions. ' +
+        'Both the Electron window and the internal viewport are resized together.',
+      inputSchema: zodToJsonSchema(z.object({
+        width: z.number().int().min(200).max(7680).describe('Window width in logical pixels (200-7680).'),
+        height: z.number().int().min(200).max(4320).describe('Window height in logical pixels (200-4320).'),
+      })),
+      timeoutMs: 5_000,
+      handler: (params) => handleResize(session, params as unknown as ResizeParams),
     },
 
     // ── GIF Recording ────────────────────────────────────────

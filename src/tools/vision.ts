@@ -1,8 +1,8 @@
 /**
  * Tool handlers: vscode_zoom, vscode_find_element
  *
- * Screenshot and snapshot are now delegated to @playwright/mcp's browser_take_screenshot
- * and browser_snapshot. Resize is delegated to browser_resize.
+ * Screenshot and snapshot are delegated to @playwright/mcp's browser_take_screenshot
+ * and browser_snapshot. Resize is handled natively by vscode_resize (see resize.ts).
  */
 
 import type { Page } from 'playwright';

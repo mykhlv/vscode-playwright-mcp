@@ -63,3 +63,8 @@ export interface FindElementParams {
   name?: string;
   max_results?: number;
 }
+
+export interface ResizeParams {
+  width: number;
+  height: number;
+}

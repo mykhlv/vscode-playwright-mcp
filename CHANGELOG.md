@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- **`vscode_resize` is now a native Electron resize**: Resizes the actual `BrowserWindow` (via `getFocusedWindow()` with fallback) instead of only the Playwright viewport. Includes input validation (200-7680 x 200-4320), error handling, and proper propagation when no window is found. `browser_resize` remains filtered out.
+
 ### Changed (BREAKING)
 - **Built on top of `@playwright/mcp`**: Generic tools (click, type, screenshot, snapshot, hover, drag, resize, evaluate, wait_for, console) are now delegated to `@playwright/mcp` upstream. All tools keep their `vscode_*` names via aliasing — no breaking change for LLM consumers.
 - Replaced `playwright-core` dependency with `@playwright/mcp` (which brings `playwright` transitively)
