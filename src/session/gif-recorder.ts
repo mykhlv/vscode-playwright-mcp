@@ -26,7 +26,6 @@ async function loadGifenc() {
   return api as {
     GIFEncoder: () => GifEncoderInstance;
     quantize: (rgba: Uint8Array, maxColors: number) => number[][];
-    applyPalette: (rgba: Uint8Array, palette: number[][]) => Uint8Array;
   };
 }
 
@@ -39,9 +38,9 @@ const MIN_FRAME_DELAY_MS = 100;
 /** Maximum delay between frames in ms */
 const MAX_FRAME_DELAY_MS = 2000;
 
-/** Output GIF dimensions (scaled down from 1280x720 for file size) */
-const GIF_WIDTH = 640;
-const GIF_HEIGHT = 360;
+/** Output GIF dimensions (75% of 1280x720 source for quality/size balance) */
+const GIF_WIDTH = 960;
+const GIF_HEIGHT = 540;
 
 interface Frame {
   png: Buffer;
@@ -50,7 +49,8 @@ interface Frame {
 
 /**
  * Scale RGBA pixel data from source dimensions to target dimensions
- * using nearest-neighbor interpolation. Works for both upscaling and downscaling.
+ * using bilinear interpolation. Produces smoother results than nearest-neighbor,
+ * especially important for text and UI elements.
  */
 function scaleRGBA(
   rgba: Uint8Array,
@@ -60,23 +60,174 @@ function scaleRGBA(
   dstHeight: number,
 ): Uint8Array {
   const dst = new Uint8Array(dstWidth * dstHeight * 4);
-  const xRatio = srcWidth / dstWidth;
-  const yRatio = srcHeight / dstHeight;
+  const xRatio = dstWidth > 1 ? (srcWidth - 1) / (dstWidth - 1) : 0;
+  const yRatio = dstHeight > 1 ? (srcHeight - 1) / (dstHeight - 1) : 0;
 
   for (let y = 0; y < dstHeight; y++) {
-    const srcY = Math.floor(y * yRatio);
+    const srcYf = y * yRatio;
+    const srcY0 = Math.floor(srcYf);
+    const srcY1 = Math.min(srcY0 + 1, srcHeight - 1);
+    const yLerp = srcYf - srcY0;
+
     for (let x = 0; x < dstWidth; x++) {
-      const srcX = Math.floor(x * xRatio);
-      const srcIdx = (srcY * srcWidth + srcX) * 4;
+      const srcXf = x * xRatio;
+      const srcX0 = Math.floor(srcXf);
+      const srcX1 = Math.min(srcX0 + 1, srcWidth - 1);
+      const xLerp = srcXf - srcX0;
+
+      const i00 = (srcY0 * srcWidth + srcX0) * 4;
+      const i10 = (srcY0 * srcWidth + srcX1) * 4;
+      const i01 = (srcY1 * srcWidth + srcX0) * 4;
+      const i11 = (srcY1 * srcWidth + srcX1) * 4;
       const dstIdx = (y * dstWidth + x) * 4;
-      dst[dstIdx] = rgba[srcIdx]!;
-      dst[dstIdx + 1] = rgba[srcIdx + 1]!;
-      dst[dstIdx + 2] = rgba[srcIdx + 2]!;
-      dst[dstIdx + 3] = rgba[srcIdx + 3]!;
+
+      for (let c = 0; c < 4; c++) {
+        const top = rgba[i00 + c]! * (1 - xLerp) + rgba[i10 + c]! * xLerp;
+        const bot = rgba[i01 + c]! * (1 - xLerp) + rgba[i11 + c]! * xLerp;
+        dst[dstIdx + c] = Math.round(top * (1 - yLerp) + bot * yLerp);
+      }
     }
   }
 
   return dst;
+}
+
+/**
+ * Find the closest color in a palette to the given RGB values.
+ * Returns the palette index.
+ */
+function nearestColorIndex(r: number, g: number, b: number, palette: number[][]): number {
+  let minDist = Infinity;
+  let minIdx = 0;
+  for (let i = 0; i < palette.length; i++) {
+    const pr = palette[i]![0]!;
+    const pg = palette[i]![1]!;
+    const pb = palette[i]![2]!;
+    const dist = (pr - r) ** 2 + (pg - g) ** 2 + (pb - b) ** 2;
+    if (dist < minDist) {
+      minDist = dist;
+      minIdx = i;
+    }
+  }
+  return minIdx;
+}
+
+/**
+ * Apply Floyd-Steinberg error-diffusion dithering to RGBA data in place.
+ * Reduces color banding when quantizing to a 256-color palette.
+ */
+function ditherFloydSteinberg(rgba: Uint8Array, width: number, height: number, palette: number[][]): void {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const oldR = rgba[idx]!;
+      const oldG = rgba[idx + 1]!;
+      const oldB = rgba[idx + 2]!;
+
+      const pi = nearestColorIndex(oldR, oldG, oldB, palette);
+      const newR = palette[pi]![0]!;
+      const newG = palette[pi]![1]!;
+      const newB = palette[pi]![2]!;
+
+      rgba[idx] = newR;
+      rgba[idx + 1] = newG;
+      rgba[idx + 2] = newB;
+
+      const errR = oldR - newR;
+      const errG = oldG - newG;
+      const errB = oldB - newB;
+
+      // Distribute error to neighboring pixels (Floyd-Steinberg weights inlined)
+      if (x + 1 < width) {
+        const ni = idx + 4; // same row, next column
+        rgba[ni] = Math.max(0, Math.min(255, Math.round(rgba[ni]! + errR * (7 / 16))));
+        rgba[ni + 1] = Math.max(0, Math.min(255, Math.round(rgba[ni + 1]! + errG * (7 / 16))));
+        rgba[ni + 2] = Math.max(0, Math.min(255, Math.round(rgba[ni + 2]! + errB * (7 / 16))));
+      }
+      if (y + 1 < height) {
+        if (x - 1 >= 0) {
+          const ni = ((y + 1) * width + (x - 1)) * 4;
+          rgba[ni] = Math.max(0, Math.min(255, Math.round(rgba[ni]! + errR * (3 / 16))));
+          rgba[ni + 1] = Math.max(0, Math.min(255, Math.round(rgba[ni + 1]! + errG * (3 / 16))));
+          rgba[ni + 2] = Math.max(0, Math.min(255, Math.round(rgba[ni + 2]! + errB * (3 / 16))));
+        }
+        {
+          const ni = ((y + 1) * width + x) * 4;
+          rgba[ni] = Math.max(0, Math.min(255, Math.round(rgba[ni]! + errR * (5 / 16))));
+          rgba[ni + 1] = Math.max(0, Math.min(255, Math.round(rgba[ni + 1]! + errG * (5 / 16))));
+          rgba[ni + 2] = Math.max(0, Math.min(255, Math.round(rgba[ni + 2]! + errB * (5 / 16))));
+        }
+        if (x + 1 < width) {
+          const ni = ((y + 1) * width + (x + 1)) * 4;
+          rgba[ni] = Math.max(0, Math.min(255, Math.round(rgba[ni]! + errR * (1 / 16))));
+          rgba[ni + 1] = Math.max(0, Math.min(255, Math.round(rgba[ni + 1]! + errG * (1 / 16))));
+          rgba[ni + 2] = Math.max(0, Math.min(255, Math.round(rgba[ni + 2]! + errB * (1 / 16))));
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Build a Map from RGB triplet (packed as r<<16|g<<8|b) to palette index.
+ * Used for O(1) palette lookup after dithering has snapped every pixel to an exact palette color.
+ */
+function buildPaletteLookup(palette: number[][]): Map<number, number> {
+  const map = new Map<number, number>();
+  for (let i = 0; i < palette.length; i++) {
+    const key = (palette[i]![0]! << 16) | (palette[i]![1]! << 8) | palette[i]![2]!;
+    map.set(key, i);
+  }
+  return map;
+}
+
+/**
+ * Map dithered RGBA pixels to palette indices using direct lookup.
+ * After Floyd-Steinberg dithering, every pixel is already an exact palette color,
+ * so a Map lookup is O(1) per pixel instead of the O(256) nearest-color search
+ * that gifenc's applyPalette would perform.
+ */
+function applyPaletteFromMap(
+  rgba: Uint8Array,
+  width: number,
+  height: number,
+  lookup: Map<number, number>,
+): Uint8Array {
+  const totalPixels = width * height;
+  const indexed = new Uint8Array(totalPixels);
+  for (let i = 0; i < totalPixels; i++) {
+    const off = i * 4;
+    const key = (rgba[off]! << 16) | (rgba[off + 1]! << 8) | rgba[off + 2]!;
+    indexed[i] = lookup.get(key) ?? 0;
+  }
+  return indexed;
+}
+
+/**
+ * Sample pixels from multiple frames to build a representative RGBA buffer
+ * for global palette generation. Takes every Nth pixel from each frame.
+ */
+function sampleFramePixels(frames: Uint8Array[], pixelsPerFrame: number): Uint8Array {
+  const totalSamples = frames.length * pixelsPerFrame;
+  const sampled = new Uint8Array(totalSamples * 4);
+  let writePos = 0;
+
+  for (const rgba of frames) {
+    const totalPixels = rgba.length / 4;
+    const step = Math.max(1, Math.floor(totalPixels / pixelsPerFrame));
+    for (let i = 0; i < totalPixels && writePos < totalSamples; i += step) {
+      const srcIdx = i * 4;
+      const dstIdx = writePos * 4;
+      sampled[dstIdx] = rgba[srcIdx]!;
+      sampled[dstIdx + 1] = rgba[srcIdx + 1]!;
+      sampled[dstIdx + 2] = rgba[srcIdx + 2]!;
+      sampled[dstIdx + 3] = rgba[srcIdx + 3]!;
+      writePos++;
+    }
+  }
+
+  // Return only the filled portion
+  return sampled.subarray(0, writePos * 4);
 }
 
 const PROGRESS_BAR_HEIGHT = 4;
@@ -198,35 +349,46 @@ export class GifRecorder {
 
     let buffer: Buffer;
     try {
-      const { GIFEncoder, quantize, applyPalette } = await loadGifenc();
+      const { GIFEncoder, quantize } = await loadGifenc();
       const encoder = GIFEncoder();
 
-      for (let i = 0; i < this.frames.length; i++) {
-        const frame = this.frames[i]!;
+      // Pre-parse and scale all frames
+      const scaledFrames: (Uint8Array | null)[] = [];
+      for (const frame of this.frames) {
         const parsed = PNG.sync.read(frame.png);
-
-        // Force ALL frames to GIF_WIDTH x GIF_HEIGHT to prevent corrupt GIFs
-        // from mixed dimensions. Nearest-neighbor is fine for GIF quality.
         let rgba: Uint8Array;
-
         if (parsed.width !== GIF_WIDTH || parsed.height !== GIF_HEIGHT) {
           rgba = scaleRGBA(
             new Uint8Array(parsed.data.buffer, parsed.data.byteOffset, parsed.data.byteLength),
-            parsed.width,
-            parsed.height,
-            GIF_WIDTH,
-            GIF_HEIGHT,
+            parsed.width, parsed.height, GIF_WIDTH, GIF_HEIGHT,
           );
         } else {
-          rgba = new Uint8Array(parsed.data.buffer, parsed.data.byteOffset, parsed.data.byteLength);
+          // Copy so dithering doesn't mutate the original parsed data
+          const src = new Uint8Array(parsed.data.buffer, parsed.data.byteOffset, parsed.data.byteLength);
+          rgba = new Uint8Array(src.length);
+          rgba.set(src);
         }
+        scaledFrames.push(rgba);
+      }
+
+      // Build a global palette from sampled pixels across all frames
+      // to eliminate color flicker between frames
+      const SAMPLES_PER_FRAME = 2000;
+      const sampledPixels = sampleFramePixels(scaledFrames as Uint8Array[], SAMPLES_PER_FRAME);
+      const globalPalette = quantize(sampledPixels, 256);
+
+      // Build O(1) lookup map from palette colors to indices (used after dithering)
+      const paletteLookup = buildPaletteLookup(globalPalette);
+
+      for (let i = 0; i < this.frames.length; i++) {
+        const rgba = scaledFrames[i]!;
 
         // Use explicit delay or calculate from timestamps
         let delay: number;
         if (frameDelay != null) {
           delay = Math.max(MIN_FRAME_DELAY_MS, Math.min(MAX_FRAME_DELAY_MS, frameDelay));
         } else if (i < this.frames.length - 1) {
-          delay = this.frames[i + 1]!.timestamp - frame.timestamp;
+          delay = this.frames[i + 1]!.timestamp - this.frames[i]!.timestamp;
           delay = Math.max(MIN_FRAME_DELAY_MS, Math.min(MAX_FRAME_DELAY_MS, delay));
         } else {
           // Last frame: hold for 1 second
@@ -237,13 +399,18 @@ export class GifRecorder {
           drawProgressBar(rgba, GIF_WIDTH, GIF_HEIGHT, i, this.frames.length);
         }
 
-        const palette = quantize(rgba, 256);
-        const indexed = applyPalette(rgba, palette);
+        // Apply Floyd-Steinberg dithering to reduce color banding,
+        // then map to indexed colors via direct palette lookup (O(1) per pixel)
+        ditherFloydSteinberg(rgba, GIF_WIDTH, GIF_HEIGHT, globalPalette);
+        const indexed = applyPaletteFromMap(rgba, GIF_WIDTH, GIF_HEIGHT, paletteLookup);
 
         encoder.writeFrame(indexed, GIF_WIDTH, GIF_HEIGHT, {
-          palette,
+          palette: globalPalette,
           delay,
         });
+
+        // Release scaled frame to allow GC to reclaim memory progressively
+        scaledFrames[i] = null;
       }
 
       encoder.finish();
