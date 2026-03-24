@@ -3,7 +3,29 @@
   "version": "0.1.0",
   "description": "Playwright for VS Code. MCP server that gives LLMs full mouse, keyboard, and visual control over VS Code via Playwright's Electron API.",
   "type": "module",
-  "private": true,
+  "license": "MIT",
+  "author": "vscode-playwright-mcp contributors",
+  "keywords": [
+    "mcp",
+    "vscode",
+    "playwright",
+    "electron",
+    "automation",
+    "testing",
+    "llm",
+    "ai"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mykhlv/vscode-playwright-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mykhlv/vscode-playwright-mcp/issues"
+  },
+  "homepage": "https://github.com/mykhlv/vscode-playwright-mcp#readme",
+  "files": [
+    "dist"
+  ],
   "bin": {
     "vscode-playwright-mcp": "dist/index.js"
   },
