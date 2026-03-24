@@ -67,7 +67,7 @@ export async function handleRunCommand(
   // the list is empty — pressing Enter would dismiss the palette and
   // type the command text directly into the editor, silently corrupting the file.
   const matchResult = await page.evaluate(() => {
-    // Also check for "No matching commands" message
+    // Check for "No matching commands" message in the quick-input message area
     const noResults = document.querySelector('.quick-input-message');
     if (noResults && noResults.textContent?.includes('No matching')) {
       return { found: false as const };
@@ -80,6 +80,10 @@ export async function handleRunCommand(
     const label = firstRow?.querySelector('.label-name')?.textContent?.trim()
       ?? firstRow?.textContent?.trim()
       ?? null;
+    // Guard against "No matching commands" appearing as a list row label
+    if (label && /no matching/i.test(label)) {
+      return { found: false as const };
+    }
     return { found: true as const, topMatch: label };
   });
 

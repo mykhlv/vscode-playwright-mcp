@@ -13,7 +13,7 @@ A VS Code-aware layer on top of [@playwright/mcp](https://github.com/microsoft/p
 
 Built on top of `@playwright/mcp`, which provides generic Electron automation (click, type, screenshot, etc.). We add a VS Code-specific layer: isolated launch with temp user-data-dir, command palette automation, editor state scraping, and Monaco-aware tools.
 
-Generic tools from `@playwright/mcp` are aliased to `vscode_*` names for a unified LLM experience. Before `vscode_launch`, only 1 tool is visible (lazy discovery saves ~10k context tokens). After launch, all ~26 tools appear.
+Generic tools from `@playwright/mcp` are aliased to `vscode_*` names for a unified LLM experience. Before `vscode_launch`, only 1 tool is visible (lazy discovery saves ~10k context tokens). After launch, all 26 tools appear.
 
 ## Requirements
 
@@ -27,7 +27,7 @@ Generic tools from `@playwright/mcp` are aliased to `vscode_*` names for a unifi
   "mcpServers": {
     "vscode": {
       "command": "npx",
-      "args": ["vscode-playwright-mcp"]
+      "args": ["-y", "vscode-playwright-mcp"]
     }
   }
 }
@@ -40,7 +40,7 @@ Custom VS Code binary:
   "mcpServers": {
     "vscode": {
       "command": "npx",
-      "args": ["vscode-playwright-mcp", "--vscode-path", "/path/to/code"]
+      "args": ["-y", "vscode-playwright-mcp", "--vscode-path", "/path/to/code"]
     }
   }
 }
@@ -100,7 +100,7 @@ Custom VS Code binary:
 | `vscode_evaluate` | Run JavaScript in the VS Code renderer process (aliased). |
 | `vscode_wait_for` | Wait for selector state, text, or delay (aliased). |
 | `vscode_console` | Retrieve console messages from renderer (aliased). |
-| `vscode_resize` | Resize viewport on the fly (aliased). |
+| `vscode_resize` | Resize the VS Code window and viewport (native). |
 | `vscode_scroll` | Scroll up/down by amount (native). |
 | `vscode_gif` | Record actions as animated GIF (native). |
 
@@ -137,4 +137,4 @@ npm run lint           # Lint with ESLint
 
 ## License
 
-Private.
+[MIT](LICENSE)

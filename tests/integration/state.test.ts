@@ -50,27 +50,25 @@ describe.skipIf(!canRun)('state', { timeout: 120_000 }, () => {
     expect(text).not.toContain('Visible lines');
   });
 
-  it('run_command "View: Toggle Terminal" executes without error', { timeout: TEST_TIMEOUT }, async () => {
-    const text = assertText(await handleRunCommand(session, { command: 'View: Toggle Terminal' }));
-    expect(text).toContain('Executed command');
-    expect(text).toContain('View: Toggle Terminal');
+  it('run_command executes a known command without error', { timeout: TEST_TIMEOUT }, async () => {
+    // Wait for VS Code to fully index commands (fresh temp profile is slow)
+    const page = session.getPage();
+    await page.waitForTimeout(2000);
+
+    const text = assertText(await handleRunCommand(session, { command: 'View: Toggle Minimap' }));
+    expect(text).toContain('Executed');
+    expect(text).toContain('Minimap');
 
     // Toggle it back off to restore clean state
-    await handleRunCommand(session, { command: 'View: Toggle Terminal' });
+    await handleRunCommand(session, { command: 'View: Toggle Minimap' });
   });
 
-  it('run_command with unknown command does not crash', { timeout: TEST_TIMEOUT }, async () => {
-    // Running a nonsense command just types it into Command Palette and presses Enter.
-    // It should not throw — the command simply won't match anything meaningful.
-    const text = assertText(
-      await handleRunCommand(session, { command: 'xyzzy_nonexistent_command_12345' }),
-    );
-    expect(text).toContain('Executed command');
-
-    // Dismiss any leftover Command Palette to avoid contaminating later tests
-    const page = session.getPage();
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(200);
+  it('run_command with unknown command throws COMMAND_NOT_FOUND', { timeout: TEST_TIMEOUT }, async () => {
+    // handleRunCommand now detects "No matching commands" in the palette
+    // and throws a ToolError with COMMAND_NOT_FOUND code.
+    await expect(
+      handleRunCommand(session, { command: 'xyzzy_nonexistent_command_12345' }),
+    ).rejects.toThrow('Command not found');
   });
 
   it('get_hover with no tooltip returns guidance message', { timeout: TEST_TIMEOUT }, async () => {
