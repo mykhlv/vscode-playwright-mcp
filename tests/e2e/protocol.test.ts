@@ -86,7 +86,7 @@ describe('MCP protocol', () => {
 
     expect(result.isError).toBe(true);
     const text = getTextContent(result);
-    expect(text).toContain('NO_SESSION');
+    expect(text).toContain('No VS Code instance is running');
   });
 
   it('vscode_close with no session is idempotent (no error)', async () => {
