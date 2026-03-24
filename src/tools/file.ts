@@ -13,6 +13,7 @@ import { ErrorCode, ToolError } from '../types/errors.js';
 import { validateNonEmptyString } from '../utils/validation.js';
 import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
+import { GET_ACTIVE_FILE_SCRIPT } from '../utils/dom-scripts.js';
 
 /** Max attempts to open the correct file. */
 const MAX_RETRIES = 2;
@@ -21,21 +22,12 @@ const MAX_RETRIES = 2;
 const FILE_OPEN_SETTLE_MS = 500;
 
 /**
- * Script to read the active file name from VS Code's DOM.
- * NOTE: Same selectors duplicated in GET_STATE_SCRIPT (state.ts) — keep in sync.
- */
-const GET_ACTIVE_FILE_SCRIPT = `(() => {
-  const activeTab = document.querySelector('.tab.active .label-name');
-  if (activeTab) return activeTab.textContent.trim();
-  const titleEl = document.querySelector('.window-title');
-  return titleEl ? titleEl.textContent.trim() : null;
-})()`;
-
-/**
  * Check if the active file matches the expected filename.
  * Compares by basename since Quick Open shows only the filename in tabs.
  */
 export function isFileMatch(activeFile: string | null, expectedPath: string): boolean {
+  if (!activeFile) return false;
+  activeFile = activeFile.trim();
   if (!activeFile) return false;
   // Extract basename, handling both / and \ separators
   const segments = expectedPath.split(/[/\\]/);

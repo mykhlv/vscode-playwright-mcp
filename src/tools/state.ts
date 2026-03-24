@@ -10,24 +10,17 @@ import type { GetStateParams, GetHoverParams } from '../types/tool-params.js';
 import { type ToolResult, textResult } from '../types/tool-results.js';
 import { withRetry } from '../utils/retry.js';
 import { logger } from '../utils/logger.js';
+import { GET_ACTIVE_FILE_SCRIPT } from '../utils/dom-scripts.js';
 
 /**
  * DOM scraping script for editor state. Runs inside the VS Code renderer.
- * NOTE: Active-file selectors (.tab.active .label-name, .window-title)
- * are duplicated in GET_ACTIVE_FILE_SCRIPT (file.ts) — keep in sync.
+ * Active-file selectors are shared via GET_ACTIVE_FILE_SCRIPT (dom-scripts.ts).
  */
 export const GET_STATE_SCRIPT = `(() => {
   const result = {};
 
-  // Active file name from the active tab
-  const activeTab = document.querySelector('.tab.active .label-name');
-  result.activeFile = activeTab ? activeTab.textContent.trim() : null;
-
-  // Also try the title bar as fallback
-  if (!result.activeFile) {
-    const titleEl = document.querySelector('.window-title');
-    result.activeFile = titleEl ? titleEl.textContent.trim() : null;
-  }
+  // Active file name — uses the same selectors as GET_ACTIVE_FILE_SCRIPT
+  result.activeFile = ${GET_ACTIVE_FILE_SCRIPT};
 
   // Cursor position from status bar (line, column) — multiple strategies
   result.cursorPosition = null;
@@ -403,7 +396,10 @@ export async function handleGetState(
 
   const page = session.getPage();
 
-  // If wait_for_diagnostics is set, poll until diagnostics appear or timeout
+  // If wait_for_diagnostics is set, poll until diagnostics appear or timeout.
+  // Reuse the last poll result to avoid an extra evaluate call.
+  let state: EditorState | null = null;
+
   if (params.wait_for_diagnostics) {
     const timeoutMs = params.timeout ?? 5000;
     const pollInterval = 500;
@@ -411,6 +407,7 @@ export async function handleGetState(
 
     while (Date.now() < deadline) {
       const probe = await page.evaluate(GET_STATE_SCRIPT) as EditorState;
+      state = probe;
       if (probe.diagnosticsList && probe.diagnosticsList.length > 0) {
         break;
       }
@@ -422,10 +419,12 @@ export async function handleGetState(
     }
   }
 
-  const state = await withRetry(
-    () => page.evaluate(GET_STATE_SCRIPT) as Promise<EditorState>,
-    'get_state',
-  );
+  if (!state) {
+    state = await withRetry(
+      () => page.evaluate(GET_STATE_SCRIPT) as Promise<EditorState>,
+      'get_state',
+    );
+  }
 
   const parts: string[] = [];
 

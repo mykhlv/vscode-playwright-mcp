@@ -4,7 +4,7 @@
  */
 
 import { writeFile } from 'node:fs/promises';
-import { resolve, isAbsolute } from 'node:path';
+import { isAbsolute } from 'node:path';
 import type { Page } from 'playwright';
 import { PNG } from 'pngjs';
 import { ErrorCode, ToolError } from '../types/errors.js';
@@ -345,7 +345,14 @@ export class GifRecorder {
       );
     }
 
-    const absolutePath = isAbsolute(filename) ? filename : resolve(process.cwd(), filename);
+    if (!isAbsolute(filename)) {
+      throw new ToolError(
+        ErrorCode.INVALID_INPUT,
+        `GIF save path must be absolute, got: "${filename}". Resolve the path before calling save().`,
+      );
+    }
+
+    const absolutePath = filename;
 
     let buffer: Buffer;
     try {
@@ -372,7 +379,10 @@ export class GifRecorder {
       }
 
       // Build a global palette from sampled pixels across all frames
-      // to eliminate color flicker between frames
+      // to eliminate color flicker between frames.
+      // Safety: the cast is safe here because nulling only happens in the encoding
+      // loop below (scaledFrames[i] = null). At this point all entries are non-null
+      // Uint8Array values populated by the pre-parse loop above.
       const SAMPLES_PER_FRAME = 2000;
       const sampledPixels = sampleFramePixels(scaledFrames as Uint8Array[], SAMPLES_PER_FRAME);
       const globalPalette = quantize(sampledPixels, 256);

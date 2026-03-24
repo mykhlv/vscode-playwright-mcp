@@ -110,10 +110,16 @@ export async function createServer() {
 
   // Enable listChanged capability so clients know we send tools/list_changed notifications.
   // Must be called before server.connect() (enforced by SDK).
-  const registerCapabilities = (server as unknown as {
-    registerCapabilities: (caps: Record<string, unknown>) => void;
-  }).registerCapabilities.bind(server);
-  registerCapabilities({ tools: { listChanged: true } });
+  const maybeRegisterCapabilities = (server as unknown as {
+    registerCapabilities?: (caps: Record<string, unknown>) => void;
+  }).registerCapabilities;
+  if (typeof maybeRegisterCapabilities === 'function') {
+    maybeRegisterCapabilities.call(server, { tools: { listChanged: true } });
+  } else {
+    logger.warn('sdk_missing_registerCapabilities', {
+      hint: 'server.registerCapabilities not found — listChanged capability will not be advertised. Check @playwright/mcp version.',
+    });
+  }
 
   // Get the raw handler map from the MCP SDK Server (Protocol base class).
   // These are private internals — fail fast with a clear message if SDK changes.
@@ -132,10 +138,18 @@ export async function createServer() {
 
   // Notification sender for tools/list_changed
   let listChangedSent = false;
+  const maybeNotification = (server as unknown as {
+    notification?: (n: { method: string }) => Promise<void>;
+  }).notification;
   const sendListChanged = () => {
     listChangedSent = true;
-    (server as unknown as { notification: (n: { method: string }) => Promise<void> })
-      .notification({ method: 'notifications/tools/list_changed' })
+    if (typeof maybeNotification !== 'function') {
+      logger.warn('sdk_missing_notification', {
+        hint: 'server.notification not found — tools/list_changed will not be sent. Check @playwright/mcp version.',
+      });
+      return;
+    }
+    maybeNotification.call(server, { method: 'notifications/tools/list_changed' })
       .catch((err: unknown) => {
         // Client may not support notifications — not fatal
         logger.debug('list_changed_notification_failed', {

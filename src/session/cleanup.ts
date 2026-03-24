@@ -44,14 +44,28 @@ function killProcess(pid: number): void {
   if (pid <= 0) return;
   try {
     process.kill(pid, 'SIGTERM');
-    const timer = setTimeout(() => {
+    const escalationTimer = setTimeout(() => {
       try {
         process.kill(pid, 'SIGKILL');
       } catch {
         // Process already exited
       }
     }, 2000);
-    timer.unref();
+    escalationTimer.unref();
+
+    // Clear the SIGKILL escalation timer if the process exits after SIGTERM
+    const pollTimer = setInterval(() => {
+      try {
+        // Signal 0 checks if process exists without sending a signal
+        process.kill(pid, 0);
+      } catch {
+        // Process no longer exists — cancel the SIGKILL escalation
+        clearTimeout(escalationTimer);
+        clearInterval(pollTimer);
+      }
+    }, 200);
+    pollTimer.unref();
+
     logger.info('process_killed', { pid });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ESRCH') {

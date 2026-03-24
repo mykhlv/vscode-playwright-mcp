@@ -17,6 +17,9 @@ import { logger } from '../utils/logger.js';
 /** Delay in ms after pressing Enter to let the command take effect. */
 const COMMAND_SETTLE_MS = 300;
 
+/** Maximum allowed length for a command string typed into the Command Palette. */
+const MAX_COMMAND_LENGTH = 500;
+
 export async function handleRunCommand(
   session: SessionManager,
   params: RunCommandParams,
@@ -24,6 +27,16 @@ export async function handleRunCommand(
   logger.info('tool_call', { tool: 'vscode_run_command', command: params.command });
 
   validateNonEmptyString(params.command, 'command');
+
+  params.command = params.command.trim();
+
+  if (params.command.length > MAX_COMMAND_LENGTH) {
+    throw new ToolError(
+      ErrorCode.INVALID_INPUT,
+      `Command string too long (${params.command.length} chars, max ${MAX_COMMAND_LENGTH}). ` +
+      'Use the exact command label from the Command Palette, not arbitrary text.',
+    );
+  }
 
   const page = session.getPage();
 
