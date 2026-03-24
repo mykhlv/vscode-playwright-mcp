@@ -9,15 +9,10 @@ import { logger } from '../utils/logger.js';
 export const MAX_MESSAGES = 10_000;
 const TRIM_AMOUNT = 1_000;
 
-export interface CollectedMessage {
+interface CollectedMessage {
   level: string;
   text: string;
   timestamp: number;
-}
-
-/** Playwright uses 'warning' for console.warn(); normalize for callers using 'warn'. */
-function normalizeLevel(level: string): string {
-  return level === 'warn' ? 'warning' : level;
 }
 
 export class ConsoleCollector {
@@ -52,32 +47,5 @@ export class ConsoleCollector {
       this.listener = null;
     }
     this.attachedPage = null;
-  }
-
-  getMessages(level?: string): CollectedMessage[] {
-    if (!level || level === 'all') return [...this.messages];
-    const normalized = normalizeLevel(level);
-    return this.messages.filter((m) => m.level === normalized);
-  }
-
-  /**
-   * Remove messages matching a specific level from the buffer.
-   * If no level (or 'all'), clears the entire buffer.
-   */
-  clearLevel(level?: string): void {
-    if (!level || level === 'all') {
-      this.messages = [];
-      return;
-    }
-    const normalized = normalizeLevel(level);
-    this.messages = this.messages.filter((m) => m.level !== normalized);
-  }
-
-  clear(): void {
-    this.messages = [];
-  }
-
-  get count(): number {
-    return this.messages.length;
   }
 }

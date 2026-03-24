@@ -1,14 +1,23 @@
 /**
  * Session state machine.
  *
- * States:
- *   IDLE -> LAUNCHING -> READY -> CLOSING -> IDLE
- *              |  |        |  |
- *              |  +-> IDLE |  +-> CRASHED -------> IDLE
- *              |           |
- *              +-> ERROR --+-> UNRESPONSIVE -> CLOSING
- *                     |               |
- *                     +-> IDLE        +-> IDLE
+ * State transitions:
+ *
+ *   IDLE ──> LAUNCHING ──> READY ──> CLOSING ──> IDLE
+ *               │            │ │
+ *               │            │ └──> CRASHED ──> IDLE
+ *               │            │
+ *               │            └──> UNRESPONSIVE ──> CLOSING
+ *               │                       │
+ *               ├──> ERROR ──> IDLE     └──> IDLE
+ *               │
+ *               └──> IDLE
+ *
+ * Notes:
+ *   - UNRESPONSIVE is reachable only from READY (not from ERROR).
+ *   - CRASHED is reachable only from READY.
+ *   - LAUNCHING can go to READY, ERROR, or IDLE (cancelled).
+ *   - ERROR and CRASHED are terminal — they only transition to IDLE.
  */
 
 export const SessionState = {

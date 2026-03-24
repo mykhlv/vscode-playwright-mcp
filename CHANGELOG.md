@@ -4,6 +4,11 @@
 
 ### Changed
 - **`vscode_resize` is now a native Electron resize**: Resizes the actual `BrowserWindow` (via `getFocusedWindow()` with fallback) instead of only the Playwright viewport. Includes input validation (200-7680 x 200-4320), error handling, and proper propagation when no window is found. `browser_resize` remains filtered out.
+- **GIF quality improvements**: 960x540 output resolution, bilinear scaling, Floyd-Steinberg dithering, and global palette for consistent colors across frames.
+- **Security hardening**: Expanded blocked Electron CLI args, pre-launch guard for native tools, SIGINT/SIGTERM handlers with correct exit codes (130/143).
+- **Tool descriptions fixed**: `browser_*` references replaced with `vscode_*` in aliased tool descriptions.
+- **`@playwright/mcp` pinned to exact version** to guard against breaking changes in private API usage.
+- Various code quality improvements: `ToolError.cause` for error chaining, logger safety, viewport validation.
 
 ### Changed (BREAKING)
 - **Built on top of `@playwright/mcp`**: Generic tools (click, type, screenshot, snapshot, hover, drag, resize, evaluate, wait_for, console) are now delegated to `@playwright/mcp` upstream. All tools keep their `vscode_*` names via aliasing — no breaking change for LLM consumers.

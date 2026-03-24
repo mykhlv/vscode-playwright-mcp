@@ -10,6 +10,13 @@ import { PNG } from 'pngjs';
 import { ErrorCode, ToolError } from '../types/errors.js';
 import { logger } from '../utils/logger.js';
 
+/**
+ * Number of pixels to sample per frame when building the global color palette.
+ * Balances palette quality vs memory: ~2000 samples/frame gives good color
+ * representation without excessive memory usage for recordings up to 100 frames.
+ */
+const SAMPLES_PER_FRAME = 2000;
+
 /** Minimal type for the gifenc GIFEncoder instance (no upstream types available). */
 interface GifEncoderInstance {
   writeFrame(indexed: Uint8Array, width: number, height: number, opts: { palette: number[][]; delay: number }): void;
@@ -383,7 +390,6 @@ export class GifRecorder {
       // Safety: the cast is safe here because nulling only happens in the encoding
       // loop below (scaledFrames[i] = null). At this point all entries are non-null
       // Uint8Array values populated by the pre-parse loop above.
-      const SAMPLES_PER_FRAME = 2000;
       const sampledPixels = sampleFramePixels(scaledFrames as Uint8Array[], SAMPLES_PER_FRAME);
       const globalPalette = quantize(sampledPixels, 256);
 

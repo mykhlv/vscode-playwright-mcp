@@ -72,14 +72,14 @@ export function createVSCodeTools(
       })),
       timeoutMs: 35_000,
       handler: async (params) => {
-        const result = await handleLaunch(session, params as LaunchParams);
+        const result = await handleLaunch(session, params as unknown as LaunchParams);
         // Provide BrowserContext to @playwright/mcp after successful launch.
         // If provide() fails (e.g., bridge already provided), close the session
         // to avoid an inconsistent state where native tools work but aliased tools hang.
         try {
           bridge.provide(session.getPage().context());
         } catch (err) {
-          await handleClose(session, {} as CloseParams).catch(() => {});
+          await handleClose(session, {} as unknown as CloseParams).catch(() => {});
           throw err;
         }
         return result;
@@ -92,7 +92,7 @@ export function createVSCodeTools(
       timeoutMs: 15_000,
       handler: async (params) => {
         bridge.reset();
-        return handleClose(session, params as CloseParams);
+        return handleClose(session, params as unknown as CloseParams);
       },
     },
 
@@ -135,7 +135,7 @@ export function createVSCodeTools(
           .describe('Max wait time in ms for wait_for_diagnostics. Default: 5000.'),
       })),
       timeoutMs: 15_000,
-      handler: (params) => handleGetState(session, params as GetStateParams),
+      handler: (params) => handleGetState(session, params as unknown as GetStateParams),
     },
     {
       name: 'vscode_get_hover',
@@ -145,7 +145,7 @@ export function createVSCodeTools(
         'Returns the hover text without needing a screenshot.',
       inputSchema: zodToJsonSchema(z.object({})),
       timeoutMs: 5_000,
-      handler: (params) => handleGetHover(session, params as GetHoverParams),
+      handler: (params) => handleGetHover(session, params as unknown as GetHoverParams),
     },
 
     // ── File Management ──────────────────────────────────────
@@ -197,7 +197,7 @@ export function createVSCodeTools(
           .describe('Maximum number of results to return. Default: 20.'),
       })),
       timeoutMs: 10_000,
-      handler: (params) => handleFindElement(session, params as FindElementParams),
+      handler: (params) => handleFindElement(session, params as unknown as FindElementParams),
     },
 
     // ── Scroll ───────────────────────────────────────────────

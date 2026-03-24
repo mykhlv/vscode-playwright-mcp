@@ -135,7 +135,14 @@ export class SessionManager {
       currentApp.on('close', () => {
         if (this.app === currentApp && this.stateMachine.state === SessionState.READY) {
           logger.warn('vscode_crashed', { pid: this.pid });
-          this.stateMachine.transition(SessionState.CRASHED);
+          try {
+            this.stateMachine.transition(SessionState.CRASHED);
+          } catch (err) {
+            logger.warn('crash_transition_failed', {
+              state: this.stateMachine.state,
+              error: String(err),
+            });
+          }
           this.app = null;
           this.page = null;
         }
