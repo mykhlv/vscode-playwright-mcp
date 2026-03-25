@@ -53,11 +53,14 @@ describe('ConsoleCollector', () => {
     expect(mockPage.getListeners('console')).toHaveLength(0);
   });
 
-  it('re-attach clears previous listener and registers a new one', () => {
+  it('re-attach removes old listener and registers a new one', () => {
     collector.attach(mockPage as unknown as Page);
-    expect(mockPage.getListeners('console')).toHaveLength(1);
+    const firstListener = mockPage.getListeners('console')[0];
+    expect(firstListener).toBeDefined();
 
     collector.attach(mockPage as unknown as Page);
-    expect(mockPage.getListeners('console')).toHaveLength(1);
+    const listeners = mockPage.getListeners('console');
+    expect(listeners).toHaveLength(1);
+    expect(listeners[0]).not.toBe(firstListener);
   });
 });

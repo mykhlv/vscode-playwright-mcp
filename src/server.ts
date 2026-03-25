@@ -27,7 +27,7 @@ import type { ToolResult } from './types/tool-results.js';
 // ── Alias map: browser_* → vscode_* ─────────────────────────
 // Upstream tools exposed under the vscode_* namespace for a unified LLM experience.
 
-const BROWSER_TO_VSCODE: Record<string, string> = {
+export const BROWSER_TO_VSCODE: Record<string, string> = {
   browser_snapshot:          'vscode_snapshot',
   browser_take_screenshot:   'vscode_screenshot',
   browser_click:             'vscode_click',
@@ -57,7 +57,7 @@ const DESCRIPTION_OVERRIDES: Record<string, string> = {
 };
 
 /** Browser tools to filter out completely (nonsensical for VS Code Electron). */
-const FILTERED_BROWSER_TOOLS = new Set([
+export const FILTERED_BROWSER_TOOLS = new Set([
   'browser_resize',          // Superseded by native vscode_resize (Electron BrowserWindow resize)
   'browser_close',           // Must use vscode_close for cleanup (temp dirs, PIDs, state)
   'browser_navigate',        // No URL navigation in Electron
@@ -74,7 +74,7 @@ const FILTERED_BROWSER_TOOLS = new Set([
 ]);
 
 /** Tools that should NOT trigger auto-capture of GIF frames. */
-const SKIP_GIF_CAPTURE = new Set([
+export const SKIP_GIF_CAPTURE = new Set([
   // Our native tools
   'vscode_gif', 'vscode_launch', 'vscode_close',
   'vscode_get_hover', 'vscode_get_state', 'vscode_get_text', 'vscode_get_diagnostics',
