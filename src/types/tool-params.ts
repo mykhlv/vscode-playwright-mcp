@@ -21,13 +21,7 @@ export interface RunCommandParams {
   args?: unknown[];
 }
 
-export interface GetStateParams {
-  diagnostics_file?: string;
-  diagnostics_severity?: 'error' | 'warning' | 'info';
-  visible_lines?: 'all' | 'none' | number;
-  wait_for_diagnostics?: boolean;
-  timeout?: number;
-}
+export type GetStateParams = Record<string, never>;
 
 export type GetHoverParams = Record<string, never>;
 

@@ -76,54 +76,6 @@ export const GET_STATE_SCRIPT = `(() => {
   const errorsEl = document.querySelector('.status-bar-item[id*="status.problems"]');
   result.diagnostics = errorsEl ? errorsEl.textContent.trim() : null;
 
-  // Detailed diagnostics from the Problems panel (if open)
-  const markersPanel = document.querySelector('.markers-panel');
-  if (markersPanel) {
-    const rows = markersPanel.querySelectorAll('.monaco-list-row');
-    const items = [];
-    let currentFile = null;
-    for (const row of rows) {
-      // Resource rows (file headers) have .file-icon; marker rows have .marker-icon
-      const fileIcon = row.querySelector('.file-icon');
-      if (fileIcon) {
-        // This is a file header row — track the filename for subsequent markers
-        currentFile = fileIcon.textContent ? fileIcon.textContent.trim() : null;
-        continue;
-      }
-
-      const iconEl = row.querySelector('.marker-icon .codicon');
-      let severity = 'unknown';
-      if (iconEl) {
-        const cls = iconEl.className || '';
-        if (cls.includes('codicon-error')) severity = 'error';
-        else if (cls.includes('codicon-warning')) severity = 'warning';
-        else if (cls.includes('codicon-info')) severity = 'info';
-      }
-
-      // The marker row typically has: icon, message span, source span, code span, position span
-      const messageEl = row.querySelector('.marker-message-detail-text') ||
-                        row.querySelector('.marker-message');
-      const message = messageEl ? messageEl.textContent.trim() : row.textContent.trim();
-
-      // Position (line, column) is in a span with class "marker-line" or similar
-      const posEl = row.querySelector('.marker-line');
-      const position = posEl ? posEl.textContent.trim() : null;
-
-      // Source (e.g., "typescript", "eslint")
-      const sourceEl = row.querySelector('.marker-source');
-      const source = sourceEl ? sourceEl.textContent.trim() : null;
-
-      // Code (e.g., "ts(2304)")
-      const codeEl = row.querySelector('.marker-code');
-      const code = codeEl ? codeEl.textContent.trim() : null;
-
-      items.push({ severity, message, position, source, code, file: currentFile });
-    }
-    if (items.length > 0) {
-      result.diagnosticsList = items;
-    }
-  }
-
   // Selection info from status bar
   const selectionEl = document.querySelector('.editor-status-selection');
   if (selectionEl) {
@@ -244,34 +196,6 @@ export const GET_STATE_SCRIPT = `(() => {
     }
   }
 
-  // Visible editor lines
-  const viewLines = document.querySelectorAll('.view-lines .view-line');
-  const lines = [];
-  for (const line of viewLines) {
-    const lineContent = line.textContent || '';
-    lines.push(lineContent);
-  }
-
-  // Get line numbers if available
-  const lineNumbers = document.querySelectorAll('.line-numbers');
-  const numberedLines = [];
-  if (lineNumbers.length > 0 && lineNumbers.length === lines.length) {
-    for (let i = 0; i < lines.length; i++) {
-      const num = lineNumbers[i].textContent.trim();
-      numberedLines.push(num + ': ' + lines[i]);
-    }
-  } else {
-    for (let i = 0; i < lines.length; i++) {
-      numberedLines.push(lines[i]);
-    }
-  }
-
-  // Return all visible lines — the handler controls truncation via visible_lines param
-  result.visibleLines = {
-    all: numberedLines,
-    totalVisible: numberedLines.length,
-  };
-
   return result;
 })()`;
 
@@ -312,15 +236,6 @@ export const GET_HOVER_SCRIPT = `(() => {
   return { found: false, text: null };
 })()`;
 
-interface DiagnosticItem {
-  severity: string;
-  message: string;
-  position: string | null;
-  source: string | null;
-  code: string | null;
-  file: string | null;
-}
-
 interface CompletionItem {
   label: string;
   kind: string | null;
@@ -356,36 +271,16 @@ interface EditorState {
   activeFile: string | null;
   cursorPosition: string | null;
   diagnostics: string | null;
-  diagnosticsList?: DiagnosticItem[];
   completions?: CompletionItem[];
   completionDetails?: CompletionDetails;
   selection?: string;
   peekWidget?: PeekWidget;
   renameWidget?: RenameWidget;
-  visibleLines: {
-    all: string[];
-    totalVisible: number;
-  };
 }
 
 interface HoverResult {
   found: boolean;
   text: string | null;
-}
-
-/** Severity levels ordered by priority (lower index = higher severity). */
-const SEVERITY_LEVELS = ['error', 'warning', 'info'] as const;
-
-/** Check if a diagnostic meets the minimum severity threshold. */
-function meetsSeverity(
-  severity: string,
-  minSeverity: 'error' | 'warning' | 'info',
-): boolean {
-  const diagIdx = SEVERITY_LEVELS.indexOf(severity as typeof SEVERITY_LEVELS[number]);
-  const minIdx = SEVERITY_LEVELS.indexOf(minSeverity);
-  // Unknown severities pass through; known ones must be at or above threshold
-  if (diagIdx === -1) return true;
-  return diagIdx <= minIdx;
 }
 
 export async function handleGetState(
@@ -396,82 +291,16 @@ export async function handleGetState(
 
   const page = session.getPage();
 
-  // If wait_for_diagnostics is set, poll until diagnostics appear or timeout.
-  // Reuse the last poll result to avoid an extra evaluate call.
-  let state: EditorState | null = null;
-
-  if (params.wait_for_diagnostics) {
-    const timeoutMs = Math.min(params.timeout ?? 5000, 30000);
-    const pollInterval = 500;
-    const deadline = Date.now() + timeoutMs;
-
-    while (Date.now() < deadline) {
-      const probe = await page.evaluate(GET_STATE_SCRIPT) as EditorState;
-      state = probe;
-      if (probe.diagnosticsList && probe.diagnosticsList.length > 0) {
-        break;
-      }
-      // Also check the status bar summary for a non-zero count
-      if (probe.diagnostics && !/^0\b/.test(probe.diagnostics.replace(/\s/g, '')) && probe.diagnostics !== '0') {
-        break;
-      }
-      await page.waitForTimeout(pollInterval);
-    }
-  }
-
-  if (!state) {
-    state = await withRetry(
-      () => page.evaluate(GET_STATE_SCRIPT) as Promise<EditorState>,
-      'get_state',
-    );
-  }
+  const state = await withRetry(
+    () => page.evaluate(GET_STATE_SCRIPT) as Promise<EditorState>,
+    'get_state',
+  );
 
   const parts: string[] = [];
 
   parts.push(`Active file: ${state.activeFile ?? '(none)'}`);
   parts.push(`Cursor: ${state.cursorPosition ?? '(unknown)'}`);
-  parts.push(`Diagnostics: ${state.diagnostics ?? '(none)'}`);
-
-  if (state.diagnosticsList && state.diagnosticsList.length > 0) {
-    let filteredDiagnostics = state.diagnosticsList;
-
-    // Filter by filename if specified
-    if (params.diagnostics_file) {
-      const filterFile = params.diagnostics_file.toLowerCase();
-      filteredDiagnostics = filteredDiagnostics.filter((d) => {
-        // Primary: match against the file header from the markers panel
-        if (d.file && d.file.toLowerCase().includes(filterFile)) {
-          return true;
-        }
-        // Fallback: check if any diagnostic text references the filename
-        const fullText = [d.message, d.position, d.source, d.code]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        return fullText.includes(filterFile);
-      });
-    }
-
-    // Filter by minimum severity if specified
-    if (params.diagnostics_severity) {
-      filteredDiagnostics = filteredDiagnostics.filter((d) =>
-        meetsSeverity(d.severity, params.diagnostics_severity!),
-      );
-    }
-
-    if (filteredDiagnostics.length > 0) {
-      parts.push('');
-      const filterNote = (params.diagnostics_file || params.diagnostics_severity)
-        ? ` (filtered from ${state.diagnosticsList.length} total)`
-        : '';
-      parts.push(`Problems panel (${filteredDiagnostics.length} items${filterNote}):`);
-      for (const d of filteredDiagnostics) {
-        const pos = d.position ? ` [${d.position}]` : '';
-        const src = d.source ? ` (${d.source}` + (d.code ? ` ${d.code}` : '') + ')' : (d.code ? ` (${d.code})` : '');
-        parts.push(`  ${d.severity.toUpperCase()}${pos}: ${d.message}${src}`);
-      }
-    }
-  }
+  parts.push(`Diagnostics: ${state.diagnostics ?? '(none — use vscode_get_diagnostics for detailed info)'}`);
 
   if (state.completions && state.completions.length > 0) {
     parts.push('');
@@ -521,42 +350,6 @@ export async function handleGetState(
 
   if (state.selection) {
     parts.push(`Selection: ${state.selection}`);
-  }
-
-  parts.push('');
-
-  // Determine visible lines mode
-  const visibleLinesParam = params.visible_lines ?? 15;
-
-  const { visibleLines } = state;
-  if (visibleLinesParam === 'none') {
-    // Don't output any lines
-  } else if (visibleLines.totalVisible === 0) {
-    parts.push('No editor lines visible (no file open or editor not focused).');
-  } else if (visibleLinesParam === 'all') {
-    parts.push(`Visible lines (${visibleLines.totalVisible}):`);
-    for (const line of visibleLines.all) {
-      parts.push(`  ${line}`);
-    }
-  } else {
-    const maxLines = typeof visibleLinesParam === 'number' ? visibleLinesParam : 15;
-    if (visibleLines.all.length <= maxLines) {
-      parts.push(`Visible lines (${visibleLines.totalVisible}):`);
-      for (const line of visibleLines.all) {
-        parts.push(`  ${line}`);
-      }
-    } else {
-      const lastCount = Math.min(5, Math.floor(maxLines / 3));
-      const firstCount = maxLines - lastCount;
-      parts.push(`Visible lines (${visibleLines.totalVisible} total, showing first ${firstCount} + last ${lastCount}):`);
-      for (const line of visibleLines.all.slice(0, firstCount)) {
-        parts.push(`  ${line}`);
-      }
-      parts.push('  ...');
-      for (const line of visibleLines.all.slice(-lastCount)) {
-        parts.push(`  ${line}`);
-      }
-    }
   }
 
   return textResult(parts.join('\n'));

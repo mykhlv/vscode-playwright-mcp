@@ -123,21 +123,10 @@ export function createVSCodeTools(
       name: 'vscode_get_state',
       description:
         'Read current editor state via DOM scraping — no screenshot needed. ' +
-        'Returns: active file name, cursor position, diagnostics, selection, visible lines, ' +
+        'Returns: active file name, cursor position, diagnostics summary (status bar), selection, ' +
         'IntelliSense completions, peek widget results, rename widget value. ' +
-        'Much faster than a screenshot for getting editor metadata.',
-      inputSchema: zodToJsonSchema(z.object({
-        diagnostics_file: z.string().optional()
-          .describe('Filter diagnostics to only show entries matching this filename.'),
-        diagnostics_severity: z.enum(['error', 'warning', 'info']).optional()
-          .describe('Filter diagnostics by minimum severity.'),
-        visible_lines: z.union([z.literal('all'), z.literal('none'), z.number()]).optional()
-          .describe('Control visible lines output: "all", "none", or a max number. Default: 15.'),
-        wait_for_diagnostics: z.boolean().optional()
-          .describe('If true, poll until diagnostics appear (or timeout).'),
-        timeout: z.number().optional()
-          .describe('Max wait time in ms for wait_for_diagnostics. Default: 5000.'),
-      })),
+        'For file content use vscode_get_text. For detailed diagnostics use vscode_get_diagnostics.',
+      inputSchema: zodToJsonSchema(z.object({})),
       timeoutMs: 15_000,
       handler: (params) => handleGetState(session, params as unknown as GetStateParams),
     },
@@ -241,7 +230,7 @@ export function createVSCodeTools(
       name: 'vscode_get_text',
       description:
         'Read the full text content of a file via VS Code API. ' +
-        'More reliable than vscode_get_state visible lines — returns the complete document, not just visible lines. ' +
+        'Returns the complete document text, not just what is visible on screen. ' +
         'Requires the helper extension (auto-installed at launch).',
       inputSchema: zodToJsonSchema(z.object({
         uri: z.string().optional()
@@ -269,9 +258,9 @@ export function createVSCodeTools(
     {
       name: 'vscode_get_diagnostics',
       description:
-        'Get diagnostics (errors, warnings) via VS Code API. ' +
-        'Unlike vscode_get_state, does NOT require the Problems panel to be open. ' +
-        'Returns all diagnostics from language services (TypeScript, ESLint, etc.).',
+        'Get detailed diagnostics (errors, warnings) via VS Code API. ' +
+        'Returns all diagnostics from language services (TypeScript, ESLint, etc.) ' +
+        'with file, line, message, severity, and source. Does not require the Problems panel.',
       inputSchema: zodToJsonSchema(z.object({
         uri: z.string().optional()
           .describe('Filter diagnostics to this file URI. If omitted, returns diagnostics for all files.'),
