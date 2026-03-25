@@ -254,8 +254,37 @@ export async function launchVSCode(config: LaunchConfig): Promise<LaunchResult> 
   const window = await app.firstWindow();
   await window.waitForLoadState('domcontentloaded');
 
-  // Set explicit viewport — viewportSize() returns undefined for Electron without this
+  // Resize the Electron BrowserWindow content area, wait for the renderer to
+  // process the new size, then sync Playwright's viewport.  Without this the
+  // window starts at Electron's default size and setViewportSize alone leaves
+  // black bars where the content doesn't fill the frame.
   const viewport = config.viewport ?? DEFAULT_VIEWPORT;
+  const DIMENSION_TOLERANCE = 2;
+  const LAYOUT_SETTLE_TIMEOUT_MS = 2_000;
+
+  await app.evaluate(
+    ({ BrowserWindow }, { width, height }) => {
+      const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+      if (win) win.setContentSize(width, height);
+    },
+    viewport,
+  );
+
+  try {
+    // Use `globalThis` instead of `window` inside the callback — tsup renames
+    // the outer `window` variable (Playwright Page), which shadows the browser
+    // global inside the serialised function body.
+    await window.waitForFunction(
+      ({ w, h, tol }) =>
+        Math.abs(globalThis.innerWidth - w) <= tol && Math.abs(globalThis.innerHeight - h) <= tol,
+      { w: viewport.width, h: viewport.height, tol: DIMENSION_TOLERANCE },
+      { timeout: LAYOUT_SETTLE_TIMEOUT_MS },
+    );
+  } catch {
+    // Timeout is not fatal — proceed with viewport sync anyway.
+    logger.debug('launch_viewport_wait_timeout', viewport);
+  }
+
   await window.setViewportSize(viewport);
 
   // Get PID for cleanup tracking
