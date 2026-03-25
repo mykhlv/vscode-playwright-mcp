@@ -77,7 +77,7 @@ const FILTERED_BROWSER_TOOLS = new Set([
 const SKIP_GIF_CAPTURE = new Set([
   // Our native tools
   'vscode_gif', 'vscode_launch', 'vscode_close',
-  'vscode_get_hover', 'vscode_get_state',
+  'vscode_get_hover', 'vscode_get_state', 'vscode_get_text', 'vscode_get_diagnostics',
   'vscode_zoom', 'vscode_find_element', 'vscode_resize',
   // Aliased upstream read-only tools (use vscode_* names since that's what we route)
   'vscode_snapshot', 'vscode_console',

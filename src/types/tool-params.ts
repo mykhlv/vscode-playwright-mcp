@@ -18,6 +18,7 @@ export type CloseParams = Record<string, never>;
 export interface RunCommandParams {
   command: string;
   input?: string;
+  args?: unknown[];
 }
 
 export interface GetStateParams {
@@ -67,4 +68,19 @@ export interface FindElementParams {
 export interface ResizeParams {
   width: number;
   height: number;
+}
+
+export interface GetTextParams {
+  uri?: string;
+}
+
+export interface EditorInsertParams {
+  text: string;
+  line?: number;
+  character?: number;
+}
+
+export interface GetDiagnosticsParams {
+  uri?: string;
+  severity?: 'error' | 'warning' | 'information' | 'hint';
 }

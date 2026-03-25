@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+- Helper extension: micro VS Code extension auto-installed at launch, provides VS Code API access over HTTP with nonce authentication
+- `vscode_get_text`: read full file content via VS Code API (complements DOM-scraped visible lines in `vscode_get_state`)
+- `vscode_editor_insert`: insert text programmatically via VS Code API (works reliably in Monaco, unlike `vscode_type`)
+- `vscode_get_diagnostics`: get diagnostics via VS Code API (does not require the Problems panel to be open)
+- Enhanced `vscode_run_command`: direct command ID execution with args via VS Code API, Command Palette fallback
+
 ## 0.1.0 — 2026-03-25
 
 ### Added

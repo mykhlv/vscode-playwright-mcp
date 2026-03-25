@@ -3,17 +3,22 @@
  * One active session at a time. Tools get a reference to the session manager.
  */
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright';
 import { SessionState, SessionStateMachine } from './session-state.js';
 import { launchVSCode, type LaunchConfig, type LaunchResult } from './vscode-launcher.js';
 import { trackSession, untrackSession, cleanupTempDir, installShutdownHooks } from './cleanup.js';
 import { ConsoleCollector } from './console-collector.js';
+import { HelperClient } from '../helper-client.js';
 import { ErrorCode, ToolError } from '../types/errors.js';
 import { withTimeout } from '../utils/timeout.js';
 import { logger } from '../utils/logger.js';
 
 const LAUNCH_TIMEOUT_MS = 30_000;
 const CLOSE_TIMEOUT_MS = 10_000;
+const HELPER_PORT_POLL_INTERVAL_MS = 200;
+const HELPER_PORT_POLL_TIMEOUT_MS = 10_000;
 
 export class SessionManager {
   private stateMachine = new SessionStateMachine();
@@ -21,6 +26,7 @@ export class SessionManager {
   private page: Page | null = null;
   private userDataDir: string | null = null;
   private pid = 0;
+  private helperClient: HelperClient | null = null;
   readonly consoleCollector = new ConsoleCollector();
 
   constructor() {
@@ -84,6 +90,13 @@ export class SessionManager {
   }
 
   /**
+   * Get the helper extension client, or null if the extension is not available.
+   */
+  getHelperClient(): HelperClient | null {
+    return this.helperClient;
+  }
+
+  /**
    * Launch a new VS Code instance. Throws if one is already running.
    */
   async launch(config: LaunchConfig): Promise<void> {
@@ -130,6 +143,17 @@ export class SessionManager {
 
       // Track for cleanup hooks
       trackSession(this.pid, this.userDataDir);
+
+      // Connect to helper extension (graceful — launch succeeds even if extension fails)
+      try {
+        const { port, authToken } = await pollForHelperPort(this.userDataDir, HELPER_PORT_POLL_TIMEOUT_MS);
+        this.helperClient = new HelperClient(port, authToken);
+        await this.helperClient.healthCheck();
+        logger.info('helper_extension_ready', { port });
+      } catch (err) {
+        logger.warn('helper_extension_unavailable', { error: String(err) });
+        this.helperClient = null;
+      }
 
       const currentApp = this.app;
       currentApp.on('close', () => {
@@ -255,9 +279,41 @@ export class SessionManager {
       await cleanupTempDir(this.userDataDir);
     }
     this.consoleCollector.detach();
+    this.helperClient = null;
     this.app = null;
     this.page = null;
     this.userDataDir = null;
     this.pid = 0;
   }
+}
+
+/**
+ * Poll for the helper extension port file.
+ * The extension writes "port:authToken" to {userDataDir}/mcp-helper-port on activation.
+ */
+async function pollForHelperPort(
+  userDataDir: string,
+  timeoutMs: number,
+): Promise<{ port: number; authToken: string }> {
+  const portFile = path.join(userDataDir, 'mcp-helper-port');
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    try {
+      const content = await fs.promises.readFile(portFile, 'utf-8');
+      const [portStr, authToken] = content.trim().split(':');
+      const port = parseInt(portStr ?? '', 10);
+      if (port > 0 && port <= 65535 && authToken && authToken.length > 0) {
+        return { port, authToken };
+      }
+    } catch {
+      // File doesn't exist yet — keep polling
+    }
+    await new Promise((resolve) => setTimeout(resolve, HELPER_PORT_POLL_INTERVAL_MS));
+  }
+
+  throw new ToolError(
+    ErrorCode.TIMEOUT,
+    'Helper extension did not start within timeout. The extension may have failed to activate.',
+  );
 }

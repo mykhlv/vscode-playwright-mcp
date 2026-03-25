@@ -8,7 +8,7 @@ import vitest from 'eslint-plugin-vitest';
 export default defineConfig([
   // Global ignores
   {
-    ignores: ['dist/', 'node_modules/', 'spikes/'],
+    ignores: ['dist/', 'node_modules/', 'spikes/', 'src/helper-extension/out/'],
   },
 
   // Base recommended rules — scoped to TS files only

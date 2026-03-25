@@ -14,6 +14,7 @@ import type {
   EnsureFileParams, GifParams,
   ZoomParams, FindElementParams,
   ScrollParams, ResizeParams,
+  GetTextParams, EditorInsertParams, GetDiagnosticsParams,
 } from '../types/tool-params.js';
 import { handleLaunch, handleClose } from './launch.js';
 import { handleZoom, handleFindElement } from './vision.js';
@@ -23,6 +24,7 @@ import { handleGetState, handleGetHover } from './state.js';
 import { handleEnsureFile } from './file.js';
 import { handleGif } from './gif.js';
 import { handleResize } from './resize.js';
+import { handleGetText, handleEditorInsert, handleGetDiagnostics } from './editor.js';
 
 export interface VSCodeToolDefinition {
   name: string;
@@ -100,15 +102,17 @@ export function createVSCodeTools(
     {
       name: 'vscode_run_command',
       description:
-        'Execute a VS Code command via Command Palette automation (Meta+Shift+P → type → Enter). ' +
-        'The command is typed into the Command Palette and the top match is executed. ' +
+        'Execute a VS Code command. Prefers direct API execution via command ID (e.g. "editor.action.goToDefinition") ' +
+        'with optional args. Falls back to Command Palette automation if the helper extension is unavailable. ' +
         'Use input for commands that open an input box (e.g., "Go to Line" needs a line number). ' +
-        'Common commands: "File: Revert File", "View: Toggle Problems", "Go to Line", "Close Editor".',
+        'Common commands: "workbench.action.closeActiveEditor", "editor.action.formatDocument", "workbench.action.revertFile".',
       inputSchema: zodToJsonSchema(z.object({
         command: z.string()
-          .describe('VS Code command ID or name, e.g. "editor.action.goToDefinition" or "Toggle Sidebar".'),
+          .describe('VS Code command ID (e.g. "editor.action.goToDefinition") or display name (e.g. "Toggle Sidebar").'),
         input: z.string().optional()
-          .describe('Optional text typed into an input box AFTER the command is selected and executed.'),
+          .describe('Optional text typed into an input box AFTER the command is selected (Command Palette fallback only).'),
+        args: z.array(z.unknown()).optional()
+          .describe('Optional arguments passed to the command (direct API execution only, ignored in Command Palette fallback).'),
       })),
       timeoutMs: 10_000,
       handler: (params) => handleRunCommand(session, params as unknown as RunCommandParams),
@@ -230,6 +234,52 @@ export function createVSCodeTools(
       })),
       timeoutMs: 5_000,
       handler: (params) => handleResize(session, params as unknown as ResizeParams),
+    },
+
+    // ── Editor API (via helper extension) ────────────────────
+    {
+      name: 'vscode_get_text',
+      description:
+        'Read the full text content of a file via VS Code API. ' +
+        'More reliable than vscode_get_state visible lines — returns the complete document, not just visible lines. ' +
+        'Requires the helper extension (auto-installed at launch).',
+      inputSchema: zodToJsonSchema(z.object({
+        uri: z.string().optional()
+          .describe('File URI to read (e.g. "file:///path/to/file.ts"). If omitted, reads the active editor.'),
+      })),
+      timeoutMs: 5_000,
+      handler: (params) => handleGetText(session, params as unknown as GetTextParams),
+    },
+    {
+      name: 'vscode_editor_insert',
+      description:
+        'Insert text into the active editor programmatically via VS Code API. ' +
+        'Unlike vscode_type (keyboard simulation), this works reliably in Monaco editor. ' +
+        'Inserts at cursor position by default, or at a specific line/character if provided.',
+      inputSchema: zodToJsonSchema(z.object({
+        text: z.string().describe('Text to insert into the editor.'),
+        line: z.number().int().min(0).optional()
+          .describe('Zero-based line number to insert at. If omitted, inserts at cursor. Defaults character to 0 if not specified.'),
+        character: z.number().int().min(0).optional()
+          .describe('Zero-based character offset within the line. Defaults to 0 when line is provided.'),
+      })),
+      timeoutMs: 5_000,
+      handler: (params) => handleEditorInsert(session, params as unknown as EditorInsertParams),
+    },
+    {
+      name: 'vscode_get_diagnostics',
+      description:
+        'Get diagnostics (errors, warnings) via VS Code API. ' +
+        'Unlike vscode_get_state, does NOT require the Problems panel to be open. ' +
+        'Returns all diagnostics from language services (TypeScript, ESLint, etc.).',
+      inputSchema: zodToJsonSchema(z.object({
+        uri: z.string().optional()
+          .describe('Filter diagnostics to this file URI. If omitted, returns diagnostics for all files.'),
+        severity: z.enum(['error', 'warning', 'information', 'hint']).optional()
+          .describe('Filter by minimum severity. Default: all severities.'),
+      })),
+      timeoutMs: 5_000,
+      handler: (params) => handleGetDiagnostics(session, params as unknown as GetDiagnosticsParams),
     },
 
     // ── GIF Recording ────────────────────────────────────────
