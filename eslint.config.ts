@@ -3,7 +3,6 @@ import eslint from '@eslint/js';
 import { defineConfig } from 'eslint/config';
 import stylistic from '@stylistic/eslint-plugin';
 import tseslint from 'typescript-eslint';
-import vitest from 'eslint-plugin-vitest';
 
 export default defineConfig([
   // Global ignores
@@ -63,17 +62,9 @@ export default defineConfig([
   // Test-specific overrides
   {
     files: ['tests/**/*.ts'],
-    plugins: { vitest },
     rules: {
       // Allow console in tests (test debugging, test helpers)
       'no-console': 'off',
-
-      // Vitest recommended rules
-      ...vitest.configs.recommended.rules,
-
-      // describe.skipIf(cond)('name', opts, fn) is valid vitest API
-      // but the plugin doesn't recognize it
-      'vitest/valid-describe-callback': 'off',
     },
   },
 ]);
