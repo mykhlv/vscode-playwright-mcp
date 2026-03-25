@@ -1,6 +1,6 @@
 {
   "name": "vscode-playwright-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Playwright for VS Code. MCP server that gives LLMs full mouse, keyboard, and visual control over VS Code via Playwright's Electron API.",
   "type": "module",
   "license": "MIT",
