@@ -5,14 +5,18 @@
 import { describe, it, expect, vi } from 'vitest';
 import { handleRunCommand } from '../../src/tools/command.js';
 import type { SessionManager } from '../../src/session/session-manager.js';
-import { ToolError } from '../../src/types/errors.js';
+import type { HelperClient } from '../../src/helper-client.js';
+import { ErrorCode, ToolError } from '../../src/types/errors.js';
 
 interface MockPageOptions {
   hasRows?: boolean;
   noMatchMessage?: boolean;
 }
 
-function createMockSession(options: MockPageOptions = { hasRows: true }): {
+function createMockSession(
+  options: MockPageOptions = { hasRows: true },
+  helperClient: Partial<HelperClient> | null = null,
+): {
   session: SessionManager;
   actions: string[];
 } {
@@ -33,12 +37,14 @@ function createMockSession(options: MockPageOptions = { hasRows: true }): {
 
   const session = {
     getPage: () => page,
+    getHelperClient: () => helperClient as HelperClient | null,
   } as unknown as SessionManager;
 
   return { session, actions };
 }
 
 describe('handleRunCommand', () => {
+  // ── Command Palette fallback (no helper client) ──────────────
   it('executes a matched command via Command Palette', async () => {
     const { session, actions } = createMockSession({ hasRows: true });
 
@@ -103,5 +109,57 @@ describe('handleRunCommand', () => {
 
     await expect(handleRunCommand(session, { command: '' }))
       .rejects.toThrow();
+  });
+
+  // ── Direct API execution (with helper client) ───────────────
+  it('executes command via helper client when available', async () => {
+    const executeCommand = vi.fn().mockResolvedValue('result-value');
+    const { session, actions } = createMockSession({ hasRows: true }, { executeCommand });
+
+    const result = await handleRunCommand(session, { command: 'editor.action.formatDocument' });
+
+    expect(result.type).toBe('text');
+    expect((result as { text: string }).text).toContain('via VS Code API');
+    expect(executeCommand).toHaveBeenCalledWith('editor.action.formatDocument', undefined);
+    // Should NOT have typed into Command Palette
+    expect(actions).toHaveLength(0);
+  });
+
+  it('passes args to helper client', async () => {
+    const executeCommand = vi.fn().mockResolvedValue(null);
+    const { session } = createMockSession({ hasRows: true }, { executeCommand });
+
+    await handleRunCommand(session, { command: 'type', args: [{ text: 'hello' }] });
+
+    expect(executeCommand).toHaveBeenCalledWith('type', [{ text: 'hello' }]);
+  });
+
+  it('falls back to Command Palette on COMMAND_NOT_FOUND', async () => {
+    const executeCommand = vi.fn().mockRejectedValue(
+      new ToolError(ErrorCode.COMMAND_NOT_FOUND, 'command \'Go to Line\' not found'),
+    );
+    const { session, actions } = createMockSession({ hasRows: true }, { executeCommand });
+
+    const result = await handleRunCommand(session, { command: 'Go to Line' });
+
+    // Should have fallen back to Command Palette
+    expect((result as { text: string }).text).toContain('Command Palette match');
+    expect(actions).toContain('type:Go to Line');
+  });
+
+  it('propagates non-COMMAND_NOT_FOUND errors from helper client', async () => {
+    const executeCommand = vi.fn().mockRejectedValue(
+      new ToolError(ErrorCode.TIMEOUT, 'Helper extension request timed out.'),
+    );
+    const { session } = createMockSession({ hasRows: true }, { executeCommand });
+
+    await expect(handleRunCommand(session, { command: 'someCommand' }))
+      .rejects.toThrow(ToolError);
+
+    try {
+      await handleRunCommand(session, { command: 'someCommand' });
+    } catch (err) {
+      expect((err as ToolError).code).toBe('TIMEOUT');
+    }
   });
 });

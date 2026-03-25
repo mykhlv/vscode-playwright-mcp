@@ -10,6 +10,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { _electron } from 'playwright';
 import type { ElectronApplication, Page } from 'playwright';
 import { ErrorCode, ToolError } from '../types/errors.js';
@@ -140,6 +141,36 @@ export interface LaunchConfig {
 }
 
 /**
+ * Resolve the path to the compiled helper extension bundled in dist/.
+ * Returns null if the extension files are not found (e.g. development without build).
+ */
+function resolveHelperExtensionPath(): string | null {
+  const thisFile = fileURLToPath(import.meta.url);
+  const distDir = path.dirname(thisFile);
+  const helperDir = path.join(distDir, 'helper-extension');
+  const manifest = path.join(helperDir, 'package.json');
+  if (fs.existsSync(manifest)) return helperDir;
+  return null;
+}
+
+/**
+ * Copy the compiled helper extension into the session's extensions directory.
+ * VS Code discovers it on startup via the standard extension loading mechanism.
+ */
+async function installHelperExtension(extensionsDir: string): Promise<boolean> {
+  const helperSrc = resolveHelperExtensionPath();
+  if (!helperSrc) {
+    logger.warn('helper_extension_not_found', { expected: 'dist/helper-extension/' });
+    return false;
+  }
+
+  const dest = path.join(extensionsDir, 'vscode-mcp-helper');
+  await fs.promises.cp(helperSrc, dest, { recursive: true });
+  logger.debug('helper_extension_installed', { dest });
+  return true;
+}
+
+/**
  * Launch a VS Code Electron instance with full isolation.
  * Creates a temp user-data-dir, injects settings, and launches via Playwright.
  */
@@ -151,6 +182,14 @@ export async function launchVSCode(config: LaunchConfig): Promise<LaunchResult> 
 
   // Inject settings BEFORE launch
   await injectSettings(userDataDir, config.settings);
+
+  // Install helper extension into the isolated extensions directory
+  const extensionsDir = path.join(userDataDir, 'extensions');
+  await fs.promises.mkdir(extensionsDir, { recursive: true });
+  const helperInstalled = await installHelperExtension(extensionsDir);
+  if (helperInstalled) {
+    logger.debug('helper_extension_ready_for_activation');
+  }
 
   // Build CLI args
   const launchArgs = [
@@ -209,13 +248,43 @@ export async function launchVSCode(config: LaunchConfig): Promise<LaunchResult> 
   const app = await _electron.launch({
     executablePath: vscodePath,
     args: launchArgs,
+    env: { ...process.env, VSCODE_MCP_USER_DATA_DIR: userDataDir },
   });
 
   const window = await app.firstWindow();
   await window.waitForLoadState('domcontentloaded');
 
-  // Set explicit viewport — viewportSize() returns undefined for Electron without this
+  // Resize the Electron BrowserWindow content area, wait for the renderer to
+  // process the new size, then sync Playwright's viewport.  Without this the
+  // window starts at Electron's default size and setViewportSize alone leaves
+  // black bars where the content doesn't fill the frame.
   const viewport = config.viewport ?? DEFAULT_VIEWPORT;
+  const DIMENSION_TOLERANCE = 2;
+  const LAYOUT_SETTLE_TIMEOUT_MS = 2_000;
+
+  await app.evaluate(
+    ({ BrowserWindow }, { width, height }) => {
+      const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+      if (win) win.setContentSize(width, height);
+    },
+    viewport,
+  );
+
+  try {
+    // Use `globalThis` instead of `window` inside the callback — tsup renames
+    // the outer `window` variable (Playwright Page), which shadows the browser
+    // global inside the serialised function body.
+    await window.waitForFunction(
+      ({ w, h, tol }) =>
+        Math.abs(globalThis.innerWidth - w) <= tol && Math.abs(globalThis.innerHeight - h) <= tol,
+      { w: viewport.width, h: viewport.height, tol: DIMENSION_TOLERANCE },
+      { timeout: LAYOUT_SETTLE_TIMEOUT_MS },
+    );
+  } catch {
+    // Timeout is not fatal — proceed with viewport sync anyway.
+    logger.debug('launch_viewport_wait_timeout', viewport);
+  }
+
   await window.setViewportSize(viewport);
 
   // Get PID for cleanup tracking

@@ -26,9 +26,6 @@ describe('GET_STATE_SCRIPT', () => {
     expect(GET_STATE_SCRIPT).toContain('.window-title');
     expect(GET_STATE_SCRIPT).toContain('.editor-status-selection');
     expect(GET_STATE_SCRIPT).toContain('status.problems');
-    expect(GET_STATE_SCRIPT).toContain('.view-lines .view-line');
-    expect(GET_STATE_SCRIPT).toContain('.line-numbers');
-    expect(GET_STATE_SCRIPT).toContain('.markers-panel');
   });
 
   it('returns an object with expected shape', () => {
@@ -36,19 +33,17 @@ describe('GET_STATE_SCRIPT', () => {
     expect(GET_STATE_SCRIPT).toContain('result.activeFile');
     expect(GET_STATE_SCRIPT).toContain('result.cursorPosition');
     expect(GET_STATE_SCRIPT).toContain('result.diagnostics');
-    expect(GET_STATE_SCRIPT).toContain('result.diagnosticsList');
-    expect(GET_STATE_SCRIPT).toContain('result.visibleLines');
     expect(GET_STATE_SCRIPT).toContain('result.selection');
     expect(GET_STATE_SCRIPT).toContain('result.peekWidget');
     expect(GET_STATE_SCRIPT).toContain('result.renameWidget');
     expect(GET_STATE_SCRIPT).toContain('result.completionDetails');
   });
 
-  it('returns all visible lines for handler-side truncation', () => {
-    // Truncation is now handled by the TypeScript handler via visible_lines param.
-    // The script should return all lines.
-    expect(GET_STATE_SCRIPT).toContain('all: numberedLines');
-    expect(GET_STATE_SCRIPT).toContain('totalVisible: numberedLines.length');
+  it('does not scrape visibleLines or diagnosticsList (moved to helper extension)', () => {
+    expect(GET_STATE_SCRIPT).not.toContain('result.visibleLines');
+    expect(GET_STATE_SCRIPT).not.toContain('result.diagnosticsList');
+    expect(GET_STATE_SCRIPT).not.toContain('.view-lines .view-line');
+    expect(GET_STATE_SCRIPT).not.toContain('.markers-panel');
   });
 });
 
@@ -152,25 +147,5 @@ describe('GET_STATE_SCRIPT completion details scraping', () => {
 
   it('stores completion details on result object', () => {
     expect(GET_STATE_SCRIPT).toContain('result.completionDetails');
-  });
-});
-
-describe('GET_STATE_SCRIPT diagnostics panel scraping', () => {
-  it('scrapes markers panel rows', () => {
-    expect(GET_STATE_SCRIPT).toContain('.markers-panel');
-    expect(GET_STATE_SCRIPT).toContain('.monaco-list-row');
-  });
-
-  it('detects severity from codicon classes', () => {
-    expect(GET_STATE_SCRIPT).toContain('codicon-error');
-    expect(GET_STATE_SCRIPT).toContain('codicon-warning');
-    expect(GET_STATE_SCRIPT).toContain('codicon-info');
-  });
-
-  it('extracts message, position, source, and code', () => {
-    expect(GET_STATE_SCRIPT).toContain('.marker-message');
-    expect(GET_STATE_SCRIPT).toContain('.marker-line');
-    expect(GET_STATE_SCRIPT).toContain('.marker-source');
-    expect(GET_STATE_SCRIPT).toContain('.marker-code');
   });
 });

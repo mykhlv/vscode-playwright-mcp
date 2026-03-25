@@ -1,9 +1,9 @@
 /**
  * Tool handler: vscode_run_command
  *
- * Executes VS Code commands via Command Palette automation.
- * The VS Code Extension API (vscode.commands) is not available from the renderer process,
- * so we automate the Command Palette UI instead: Meta+Shift+P → type command → Enter.
+ * Executes VS Code commands via two strategies:
+ * 1. Direct API execution via helper extension (preferred — supports command IDs and args)
+ * 2. Command Palette automation as fallback (Meta+Shift+P → type command → Enter)
  */
 
 import type { SessionManager } from '../session/session-manager.js';
@@ -27,9 +27,39 @@ export async function handleRunCommand(
   logger.info('tool_call', { tool: 'vscode_run_command', command: params.command });
 
   validateNonEmptyString(params.command, 'command');
-
   const command = params.command.trim();
 
+  // Try direct API execution first via helper extension
+  const client = session.getHelperClient();
+  if (client) {
+    try {
+      const result = await client.executeCommand(command, params.args);
+      const argsDesc = params.args?.length ? ` with args ${JSON.stringify(params.args)}` : '';
+      const resultDesc = result !== null && result !== undefined ? ` Result: ${JSON.stringify(result)}` : '';
+      return textResult(
+        `Executed command "${command}"${argsDesc} via VS Code API.${resultDesc} ` +
+        'Verify with vscode_screenshot or vscode_get_state if the result is unclear.',
+      );
+    } catch (err) {
+      // Only fall back to Command Palette for command-not-found errors.
+      // Other errors (e.g. extension crashed, timeout) should propagate.
+      if (err instanceof ToolError && err.code === ErrorCode.COMMAND_NOT_FOUND) {
+        logger.debug('command_api_not_found_fallback', { command });
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  // Fallback: Command Palette automation (args not supported in this mode)
+  return executeViaCommandPalette(session, command, params.input);
+}
+
+async function executeViaCommandPalette(
+  session: SessionManager,
+  command: string,
+  input?: string,
+): Promise<ToolResult> {
   if (command.length > MAX_COMMAND_LENGTH) {
     throw new ToolError(
       ErrorCode.INVALID_INPUT,
@@ -63,24 +93,17 @@ export async function handleRunCommand(
   await page.waitForTimeout(200);
 
   // Check if Command Palette found a match and read the top result label.
-  // When no match exists, the palette shows "No matching commands" or
-  // the list is empty — pressing Enter would dismiss the palette and
-  // type the command text directly into the editor, silently corrupting the file.
   const matchResult = await page.evaluate(() => {
-    // Check for "No matching commands" message in the quick-input message area
     const noResults = document.querySelector('.quick-input-message');
     if (noResults && noResults.textContent?.includes('No matching')) {
       return { found: false as const };
     }
-    // Command Palette uses .quick-input-list with .monaco-list-row elements
     const rows = document.querySelectorAll('.quick-input-list .monaco-list-row');
     if (rows.length === 0) return { found: false as const };
-    // Read the label of the top match so we can report what was actually executed
     const firstRow = rows[0];
     const label = firstRow?.querySelector('.label-name')?.textContent?.trim()
       ?? firstRow?.textContent?.trim()
       ?? null;
-    // Guard against "No matching commands" appearing as a list row label
     if (label && /no matching/i.test(label)) {
       return { found: false as const };
     }
@@ -88,7 +111,6 @@ export async function handleRunCommand(
   });
 
   if (!matchResult.found) {
-    // Dismiss the palette without executing
     await page.keyboard.press('Escape');
     throw new ToolError(
       ErrorCode.COMMAND_NOT_FOUND,
@@ -102,21 +124,18 @@ export async function handleRunCommand(
   await page.keyboard.press('Enter');
 
   // If there's additional text input, type it after the command executes
-  if (params.input) {
+  if (input) {
     await page.waitForTimeout(200);
-    await page.keyboard.type(params.input, { delay: 0 });
+    await page.keyboard.type(input, { delay: 0 });
     await page.keyboard.press('Enter');
   }
 
   // Let the command take effect
   await page.waitForTimeout(COMMAND_SETTLE_MS);
 
-  const inputDesc = params.input ? ` with input "${params.input}"` : '';
+  const inputDesc = input ? ` with input "${input}"` : '';
   const topMatch = matchResult.topMatch;
 
-  // If we could read the top match label, report exactly what was executed.
-  // If the top match differs from the query, the caller knows immediately
-  // that the wrong command may have been selected — no extra round-trip needed.
   if (topMatch) {
     return textResult(
       `Executed top Command Palette match "${topMatch}" (query: "${command}")${inputDesc}. ` +

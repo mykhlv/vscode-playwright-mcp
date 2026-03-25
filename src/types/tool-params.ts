@@ -18,15 +18,10 @@ export type CloseParams = Record<string, never>;
 export interface RunCommandParams {
   command: string;
   input?: string;
+  args?: unknown[];
 }
 
-export interface GetStateParams {
-  diagnostics_file?: string;
-  diagnostics_severity?: 'error' | 'warning' | 'info';
-  visible_lines?: 'all' | 'none' | number;
-  wait_for_diagnostics?: boolean;
-  timeout?: number;
-}
+export type GetStateParams = Record<string, never>;
 
 export type GetHoverParams = Record<string, never>;
 
@@ -67,4 +62,19 @@ export interface FindElementParams {
 export interface ResizeParams {
   width: number;
   height: number;
+}
+
+export interface GetTextParams {
+  uri?: string;
+}
+
+export interface EditorInsertParams {
+  text: string;
+  line?: number;
+  character?: number;
+}
+
+export interface GetDiagnosticsParams {
+  uri?: string;
+  severity?: 'error' | 'warning' | 'information' | 'hint';
 }

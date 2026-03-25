@@ -1,0 +1,15 @@
+{
+  "name": "vscode-mcp-helper",
+  "displayName": "MCP Helper",
+  "description": "Internal helper extension for vscode-playwright-mcp. Provides VS Code API access over HTTP.",
+  "version": "0.0.1",
+  "publisher": "vscode-playwright-mcp",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "activationEvents": [
+    "*"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {}
+}

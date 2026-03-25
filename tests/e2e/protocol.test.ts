@@ -25,11 +25,6 @@ describe('MCP protocol', () => {
     }
   });
 
-  it('connects and initializes successfully', () => {
-    // If beforeAll succeeded, the handshake worked
-    expect(client).toBeDefined();
-  });
-
   it('listTools returns all registered tools', async () => {
     const { tools } = await client.listTools();
 
@@ -41,12 +36,15 @@ describe('MCP protocol', () => {
       'vscode_console',
       'vscode_drag',
       'vscode_drag_xy',
+      'vscode_editor_insert',
       'vscode_ensure_file',
       'vscode_evaluate',
       'vscode_fill_form',
       'vscode_find_element',
+      'vscode_get_diagnostics',
       'vscode_get_hover',
       'vscode_get_state',
+      'vscode_get_text',
       'vscode_gif',
       'vscode_hover',
       'vscode_hover_xy',

@@ -16,6 +16,12 @@ const MIN_DIMENSION = 200;
 const MAX_WIDTH = 7680;
 const MAX_HEIGHT = 4320;
 
+/** Max time to wait for the renderer to settle after BrowserWindow resize. */
+const LAYOUT_SETTLE_TIMEOUT_MS = 2_000;
+
+/** Tolerance in pixels for dimension matching (OS chrome, DPI rounding). */
+const DIMENSION_TOLERANCE = 2;
+
 function validateDimensions(width: number, height: number): { width: number; height: number } {
   if (!Number.isFinite(width) || !Number.isFinite(height)) {
     throw new ToolError(
@@ -82,6 +88,23 @@ export async function handleResize(
       ErrorCode.ACTION_FAILED,
       `Failed to resize Electron window: ${error instanceof Error ? error.message : String(error)}`,
     );
+  }
+
+  // Wait for VS Code to finish its internal layout after the BrowserWindow resize.
+  // Without this, setViewportSize can fire before the renderer has processed the
+  // new content size, leaving empty areas where the editor content doesn't fill.
+  // Uses a tolerance of ±2px because OS chrome and DPI rounding can cause slight
+  // mismatches between the requested size and actual innerWidth/innerHeight.
+  try {
+    await page.waitForFunction(
+      ({ w, h, tol }) =>
+        Math.abs(window.innerWidth - w) <= tol && Math.abs(window.innerHeight - h) <= tol,
+      { w: width, h: height, tol: DIMENSION_TOLERANCE },
+      { timeout: LAYOUT_SETTLE_TIMEOUT_MS },
+    );
+  } catch {
+    // Timeout is not fatal — proceed with viewport sync anyway.
+    logger.debug('resize_wait_timeout', { width, height });
   }
 
   // Sync Playwright viewport to match the new window size
