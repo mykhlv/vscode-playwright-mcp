@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.1 — 2026-03-28
+
+### Fixed
+- Security: fix `path-to-regexp` DoS vulnerability (GHSA-j3q9-mxjg-w52f, GHSA-27v5-c462-wpq7)
+
+### Changed
+- Bump `@modelcontextprotocol/sdk` to 1.28.0
+- Bump `@types/vscode` to 1.110.0
+- Bump `vitest` to 4.1.2
+
 ## 0.2.0 — 2026-03-26
 
 ### Added
